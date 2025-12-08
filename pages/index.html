@@ -163,6 +163,7 @@
 
                 if (requestToken) {
                     document.getElementById('tokenDisplay').textContent = requestToken;
+                    document.getElementById('botLink').href = `https://t.me/${BOT_USERNAME}?text=${requestToken}`;
                 } else {
                     document.getElementById('successCard').classList.add('hidden');
                     document.getElementById('errorCard').classList.remove('hidden');

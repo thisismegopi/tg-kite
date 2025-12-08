@@ -74,7 +74,7 @@ const balance = async ctx => {
         if (eq) {
             message += `*Equity*\n`;
             message += `Available Cash: ${formatCurrency(eq.available.cash)}\n`;
-            message += `Utilized: ${formatCurrency(eq.utilized.debits)}\n`;
+            message += `Utilized: ${formatCurrency(eq.utilised.debits)}\n`;
             message += `Net: ${formatCurrency(eq.net)}\n\n`;
         }
 

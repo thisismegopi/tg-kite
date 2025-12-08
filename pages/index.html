@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Kite Login Success</title>
+        <style>
+            :root {
+                --primary: #ff5722; /* Kite Orange-ish */
+                --bg: #f4f4f5;
+                --text: #333;
+                --card-bg: #fff;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                background-color: var(--bg);
+                color: var(--text);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+            }
+
+            .card {
+                background: var(--card-bg);
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                max-width: 400px;
+                width: 100%;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+                color: #333;
+            }
+
+            .status-icon {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                display: block;
+            }
+
+            .token-box {
+                background: #f8f9fa;
+                border: 1px solid #e9ecef;
+                padding: 1rem;
+                border-radius: 6px;
+                font-family: monospace;
+                font-size: 1.1rem;
+                margin: 1.5rem 0;
+                word-break: break-all;
+                position: relative;
+            }
+
+            .btn {
+                display: inline-block;
+                width: 100%;
+                padding: 0.75rem;
+                border: none;
+                border-radius: 6px;
+                font-size: 1rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-bottom: 0.5rem;
+                text-decoration: none;
+                box-sizing: border-box;
+            }
+
+            .btn-primary {
+                background-color: var(--primary);
+                color: white;
+            }
+
+            .btn-primary:hover {
+                opacity: 0.9;
+            }
+
+            .btn-secondary {
+                background-color: #e9ecef;
+                color: #333;
+            }
+
+            .btn-secondary:hover {
+                background-color: #dee2e6;
+            }
+
+            .hidden {
+                display: none;
+            }
+
+            .toast {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #333;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 0.9rem;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+
+            .toast.show {
+                opacity: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card" id="successCard">
+            <span class="status-icon">✅</span>
+            <h1>Login Successful</h1>
+            <p>Copy the token below and send it to the bot.</p>
+
+            <div class="token-box" id="tokenDisplay">Loading...</div>
+
+            <button class="btn btn-secondary" onclick="copyToken()">📋 Copy Token</button>
+            <a href="#" id="botLink" class="btn btn-primary">🤖 Return to Bot</a>
+        </div>
+
+        <div class="card hidden" id="errorCard">
+            <span class="status-icon">⚠️</span>
+            <h1>Token Not Found</h1>
+            <p>Could not find the request token in the URL.</p>
+            <p style="font-size: 0.9rem; color: #666">Make sure you initiated the login from the bot.</p>
+        </div>
+
+        <div class="toast" id="toast">Copied to clipboard!</div>
+
+        <script>
+            // --------------------------------------------------------
+            // CONFIGURATION
+            // REPLACE 'your_bot_username' with your actual bot username (without @)
+            // Example: const BOT_USERNAME = 'MyKiteTradingBot';
+            const BOT_USERNAME = 'zerodha_holding_bot';
+            // --------------------------------------------------------
+
+            document.addEventListener('DOMContentLoaded', () => {
+                // update bot link
+                if (BOT_USERNAME && BOT_USERNAME !== 'your_bot_username_here') {
+                    document.getElementById('botLink').href = `https://t.me/${BOT_USERNAME}`;
+                } else {
+                    document.getElementById('botLink').onclick = e => {
+                        if (document.getElementById('botLink').href.endsWith('#')) {
+                            e.preventDefault();
+                            alert('Please configure the BOT_USERNAME in the HTML file (pages/index.html).');
+                        }
+                    };
+                }
+
+                // Get query params
+                const params = new URLSearchParams(window.location.search);
+                const status = params.get('status');
+                const requestToken = params.get('request_token');
+
+                if (requestToken) {
+                    document.getElementById('tokenDisplay').textContent = requestToken;
+                } else {
+                    document.getElementById('successCard').classList.add('hidden');
+                    document.getElementById('errorCard').classList.remove('hidden');
+                }
+            });
+
+            function copyToken() {
+                const token = document.getElementById('tokenDisplay').textContent;
+                navigator.clipboard
+                    .writeText(token)
+                    .then(() => {
+                        showToast();
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                        // Fallback for older browsers or non-secure contexts
+                        const textArea = document.createElement('textarea');
+                        textArea.value = token;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('Copy');
+                        textArea.remove();
+                        showToast();
+                    });
+            }
+
+            function showToast() {
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }
+        </script>
+    </body>
+</html>

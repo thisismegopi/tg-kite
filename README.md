@@ -13,13 +13,14 @@ A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Co
   - Check order status.
 - **Persistence**: SQLite storage to persist user sessions (no need to login daily until token expires).
 - **Security**: Environment variable configuration for API secrets.
+- **GitHub Pages Login**: Hosted login page for easy token extraction.
 
 ## 📋 Prerequisites
 
 - **Node.js**: v16 or higher.
 - **Zerodha Kite Connect App**: You need a Kite Connect developer account.
   - Create an app to get `API_KEY` and `API_SECRET`.
-  - Set the **Redirect URL** (e.g., `https://kite.trade` or your own URL).
+  - Set the **Redirect URL** (see below).
 - **Telegram Bot**: Create a bot via [@BotFather](https://t.me/BotFather) to get the `BOT_TOKEN`.
 
 ## 🛠️ Installation
@@ -35,7 +36,15 @@ A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Co
    npm install
    ```
 
-3. **Configure Environment Variables**
+3. **Deploy Login Page (GitHub Pages)**
+   - Go to `pages/index.html`.
+   - Edit the file and update `const BOT_USERNAME = 'your_bot_username';` with your actual Telegram bot username.
+   - Commit and push your code to GitHub.
+   - Go to Repo Settings -> Pages -> Deploy from branch (e.g., `main` or `master`) -> Folder `/pages` (if possible) or just root if you restructure. 
+   - *Alternative:* Push just the contents of `pages/` to a `gh-pages` branch.
+   - Get your GitHub Pages URL (e.g., `https://youruser.github.io/tg-kite/pages/`).
+
+4. **Configure Environment Variables**
    Copy the example environment file:
    ```bash
    cp env.example .env
@@ -45,10 +54,10 @@ A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Co
    TELEGRAM_BOT_TOKEN=your_telegram_bot_token
    KITE_API_KEY=your_kite_api_key
    KITE_API_SECRET=your_kite_api_secret
-   KITE_REDIRECT_URL=https://kite.trade
+   KITE_REDIRECT_URL=https://youruser.github.io/tg-kite/pages/
    DB_FILE=kite_bot.db
    ```
-   > **Note**: `KITE_REDIRECT_URL` must match exactly what is set in your Zerodha Developer console.
+   > **Important**: Go to your Zerodha Developer Console and update the **Redirect URL** to match `KITE_REDIRECT_URL` exactly.
 
 ## ▶️ Usage
 
@@ -65,8 +74,8 @@ A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Co
 3. **Login Flow**
    - Send `/login`.
    - Click the generated login link to authenticate with Zerodha.
-   - You will be redirected to your Redirect URL.
-   - Copy the `request_token` from the URL (e.g., `...&request_token=YOUR_TOKEN&...`).
+   - You will be redirected to your GitHub Page.
+   - Click **Copy Token** and then **Return to Bot**.
    - Paste the token into the Telegram chat.
 
 ## 🤖 Commands
@@ -93,6 +102,8 @@ A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Co
 
 ```
 tg-kite/
+├── pages/               # Static HTML for GitHub Pages Redirect
+│   └── index.html
 ├── src/
 │   ├── bot/
 │   │   ├── handlers/    # Command logic (auth, orders, portfolio)
@@ -112,4 +123,3 @@ This software is for educational purposes only. Trading involves financial risk.
 ## 📄 License
 
 ISC
-

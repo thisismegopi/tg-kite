@@ -45,11 +45,20 @@ const help = ctx => {
 /orderstatus <id> - Check Order Status
 
 *Mutual Funds*
-/mfholdings - View MF Holdings (or /mutualfunds)
+/mfholdings - View MF Holdings
 /mforders - List MF Orders (7 days)
 /mforder <id> - Check MF Order Details
 /mfsips - View Active SIPs
-/mfinstruments <query> - Search MF Schemes`,
+/mfinstruments <query> - Search MF Schemes
+
+*🤖 AI Analysis*
+/analyze - Quick AI portfolio summary
+/analyze detailed - Full breakdown
+/analyze credits - Check AI credits
+/analyze <question> - Ask anything!
+  _Examples:_
+  _/analyze what are my risky holdings?_
+  _/analyze how diversified am I?_`,
         { parse_mode: 'Markdown' },
     );
 };

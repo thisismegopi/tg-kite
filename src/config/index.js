@@ -21,6 +21,9 @@ module.exports = {
   kiteApiKey: process.env.KITE_API_KEY,
   kiteApiSecret: process.env.KITE_API_SECRET,
   kiteRedirectUrl: process.env.KITE_REDIRECT_URL,
-  dbFile: process.env.DB_FILE || 'kite_bot.db'
+  dbFile: process.env.DB_FILE || 'kite_bot.db',
+  // AI Analysis (optional)
+  geminiApiKey: process.env.GEMINI_API_KEY || null,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 };
 

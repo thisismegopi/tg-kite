@@ -6,6 +6,7 @@ const authHandlers = require('./src/bot/handlers/auth');
 const portfolioHandlers = require('./src/bot/handlers/portfolio');
 const orderHandlers = require('./src/bot/handlers/orders');
 const mfHandlers = require('./src/bot/handlers/mutualFunds');
+const analyzeHandlers = require('./src/bot/handlers/analyze');
 
 // 1. Initialize Database
 db.init();
@@ -39,8 +40,12 @@ bot.command('mforder', authMiddleware.requireAuth, mfHandlers.mfOrder);
 bot.command('mfsips', authMiddleware.requireAuth, mfHandlers.mfSips);
 bot.command('mfinstruments', authMiddleware.requireAuth, mfHandlers.mfInstruments);
 
-// 8. General Message Handler (for Token input)
+// 8. Command Handlers - AI Analysis (Require Auth)
+bot.command(['analyze', 'aiportfolio'], authMiddleware.requireAuth, analyzeHandlers.analyze);
+
+// 9. General Message Handler (for Token input)
 bot.on('text', authHandlers.handleMessage);
+
 
 // 9. Error Handling
 bot.catch((err, ctx) => {

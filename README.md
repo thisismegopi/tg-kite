@@ -98,6 +98,32 @@ A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Co
 - Limit Order: `/buy INFY 5 LIMIT 1450`
 - Intraday (MIS): `/sell RELIANCE 10 MARKET MIS`
 
+## 📊 Mutual Fund Commands
+
+| Command | Description |
+|---------|-------------|
+| `/mfholdings` | View MF holdings with P&L (alias: `/mutualfunds`) |
+| `/mforders` | List MF orders (last 7 days) |
+| `/mforder <order_id>` | View individual MF order details |
+| `/mfsips` | View active and paused SIPs |
+| `/mfinstruments <query>` | Search mutual fund schemes |
+
+### Key Differences from Equity
+
+| Aspect | Equity | Mutual Funds |
+|--------|--------|--------------|
+| Units | Quantity (whole numbers) | Units (decimal precision) |
+| Price | Stock Price | NAV (Net Asset Value) |
+| Order History | Today only | Last 7 days |
+| Order Placement | Via API | **Not Supported** (requires Coin platform) |
+
+### MF Instruments Caching
+
+The `/mfinstruments` command uses a cached list of ~2000+ mutual fund schemes:
+- **Cache Duration**: 24 hours
+- **Lazy Loading**: Fetched on first search request
+- **Search Scope**: Fund name, AMC, and scheme code
+
 ## 📂 Project Structure
 
 ```

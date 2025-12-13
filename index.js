@@ -5,6 +5,7 @@ const authMiddleware = require('./src/bot/middleware/auth');
 const authHandlers = require('./src/bot/handlers/auth');
 const portfolioHandlers = require('./src/bot/handlers/portfolio');
 const orderHandlers = require('./src/bot/handlers/orders');
+const mfHandlers = require('./src/bot/handlers/mutualFunds');
 
 // 1. Initialize Database
 db.init();
@@ -31,10 +32,17 @@ bot.command(['buy', 'sell'], authMiddleware.requireAuth, orderHandlers.placeOrde
 bot.command('orders', authMiddleware.requireAuth, orderHandlers.listOrders);
 bot.command('orderstatus', authMiddleware.requireAuth, orderHandlers.orderStatus);
 
-// 7. General Message Handler (for Token input)
+// 7. Command Handlers - Mutual Funds (Require Auth)
+bot.command(['mfholdings', 'mutualfunds'], authMiddleware.requireAuth, mfHandlers.mfHoldings);
+bot.command('mforders', authMiddleware.requireAuth, mfHandlers.mfOrders);
+bot.command('mforder', authMiddleware.requireAuth, mfHandlers.mfOrder);
+bot.command('mfsips', authMiddleware.requireAuth, mfHandlers.mfSips);
+bot.command('mfinstruments', authMiddleware.requireAuth, mfHandlers.mfInstruments);
+
+// 8. General Message Handler (for Token input)
 bot.on('text', authHandlers.handleMessage);
 
-// 8. Error Handling
+// 9. Error Handling
 bot.catch((err, ctx) => {
     console.error(`Ooops, encountered an error for ${ctx.updateType}`, err);
     ctx.reply('⚠️ An unexpected error occurred. Please try again later.');

@@ -124,6 +124,52 @@ class KiteClient {
         return this._get(`/orders/${orderId}`);
     }
 
+    // --- Mutual Funds ---
+
+    /**
+     * Get mutual fund holdings.
+     * Returns array of MF holdings with folio, units, NAV, P&L etc.
+     */
+    async getMfHoldings() {
+        return this._get('/mf/holdings');
+    }
+
+    /**
+     * Get mutual fund orders from the last 7 days.
+     */
+    async getMfOrders() {
+        return this._get('/mf/orders');
+    }
+
+    /**
+     * Get details of a specific mutual fund order.
+     * @param {string} orderId - The MF order ID
+     */
+    async getMfOrder(orderId) {
+        return this._get(`/mf/orders/${orderId}`);
+    }
+
+    /**
+     * Get all active and paused SIPs.
+     */
+    async getMfSips() {
+        return this._get('/mf/sips');
+    }
+
+    /**
+     * Get the full list of mutual fund instruments.
+     * Returns raw CSV text (Gzipped response is auto-decompressed by axios).
+     * NOTE: This returns a large dataset. Use mfCache.js for caching/searching.
+     */
+    async getMfInstruments() {
+        // The /mf/instruments endpoint returns a Gzipped CSV.
+        // Axios auto-decompresses gzip, so we receive plain text.
+        const response = await this.client.get('/mf/instruments', {
+            transformResponse: [(data) => data], // Prevent JSON parsing
+        });
+        return response; // Returns raw CSV string
+    }
+
     // --- Helpers ---
 
     async _get(endpoint) {

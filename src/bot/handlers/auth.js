@@ -42,7 +42,14 @@ const help = ctx => {
   _Usage: /buy SYMBOL QTY [TYPE] [PRICE]_
 /sell - Place Sell Order
 /orders - List Recent Orders
-/orderstatus <id> - Check Order Status`,
+/orderstatus <id> - Check Order Status
+
+*Mutual Funds*
+/mfholdings - View MF Holdings (or /mutualfunds)
+/mforders - List MF Orders (7 days)
+/mforder <id> - Check MF Order Details
+/mfsips - View Active SIPs
+/mfinstruments <query> - Search MF Schemes`,
         { parse_mode: 'Markdown' },
     );
 };

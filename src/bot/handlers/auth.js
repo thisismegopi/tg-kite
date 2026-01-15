@@ -17,7 +17,7 @@ I can help you manage your Zerodha portfolio and place orders directly from Tele
 3. Use /buy or /sell to place orders.
 4. Use /help to see all commands.
 
-_Note: This is open source bot. You can find the source code on [GitHub](https://github.com/thisismegopi/tg-kite).`,
+_Note: This is open source bot. You can find the source code on [GitHub](https://github.com/thisismegopi/tg-kite)`,
         { parse_mode: 'Markdown' },
     );
 };

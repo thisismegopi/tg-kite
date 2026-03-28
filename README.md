@@ -8,6 +8,7 @@ A Node.js Telegram bot for Zerodha Kite Connect v3. It supports authentication, 
 - Portfolio holdings, positions, and funds lookup
 - Order placement and order status tracking
 - Market data commands for quote, OHLC, and LTP
+- Per-user instrument watchlist stored in SQLite
 - Historical candlestick chart images in chat
 - Mutual fund holdings, orders, SIPs, and instrument search
 - Optional Gemini-based portfolio analysis with credit tracking
@@ -116,6 +117,9 @@ Examples:
 | `/ohlc <INSTRUMENT>` | OHLC + LTP |
 | `/ltp <INSTRUMENT>` | Last traded price |
 | `/chart <INSTRUMENT> <TIMEFRAME>` | Candlestick chart image |
+| `/watchadd <INSTRUMENT>` | Add instrument(s) to your watchlist |
+| `/watchremove <INSTRUMENT>` | Remove instrument(s) from your watchlist |
+| `/watchlist` | View watchlist image sorted by gainers/losers |
 
 Supported chart timeframes:
 
@@ -198,6 +202,7 @@ SQLite tables:
 
 - `sessions`: Kite session data per Telegram user
 - `ai_credits`: AI credit balance and usage tracking
+- `user_watchlist`: saved instruments per Telegram user
 
 ## Notes
 

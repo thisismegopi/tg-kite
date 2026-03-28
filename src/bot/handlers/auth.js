@@ -49,6 +49,9 @@ const help = ctx => {
 /ohlc <instrument> - OHLC + LTP
 /ltp <instrument> - Last traded price
 /chart <instrument> <timeframe> - Candlestick chart image
+/watchadd <instrument> - Add to watchlist
+/watchremove <instrument> - Remove from watchlist
+/watchlist - View watchlist image sorted by gainers
 
 *Mutual Funds*
 /mfholdings - View MF Holdings

@@ -1,5 +1,11 @@
+const { renderTableImage } = require('../../chart/tableImage');
+
 const formatCurrency = val => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+};
+
+const formatCurrencyNumber = val => {
+    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 };
 
 const holdings = async ctx => {
@@ -11,26 +17,40 @@ const holdings = async ctx => {
             return ctx.reply('You have no holdings currently.');
         }
 
-        // holdings is an array
-        let message = '📊 *Portfolio Holdings*\n\n';
-        let totalPnL = 0;
+        const totalPnL = response.reduce((sum, holding) => sum + (holding.pnl || 0), 0);
+        const rows = response
+            .sort((a, b) => b.pnl - a.pnl)
+            .map(holding => ({
+                cells: [
+                    { key: 'symbol', text: holding.tradingsymbol || 'N/A' },
+                    { key: 'qty', text: holding.quantity ?? 0 },
+                    { key: 'avg', text: formatCurrencyNumber(holding.average_price || 0) },
+                    { key: 'ltp', text: formatCurrencyNumber(holding.last_price || 0) },
+                    {
+                        key: 'pnl',
+                        text: formatCurrency(holding.pnl || 0),
+                        tone: (holding.pnl || 0) > 0 ? 'gain' : (holding.pnl || 0) < 0 ? 'loss' : 'flat',
+                    },
+                ],
+            }));
 
-        response.forEach(h => {
-            const pnl = h.pnl;
-            totalPnL += pnl;
-            const emoji = pnl >= 0 ? '🟢' : '🔴';
-
-            message += `*${h.tradingsymbol}*\n`;
-            message += `Qty: ${h.quantity} | Avg: ${h.average_price.toFixed(2)}\n`;
-            message += `LTP: ${h.last_price} | P&L: ${emoji} ${formatCurrency(pnl)}\n\n`;
+        const buffer = await renderTableImage({
+            title: 'Portfolio Holdings',
+            subtitle: 'Current equity holdings snapshot',
+            columns: [
+                { key: 'symbol', label: 'Instrument', offset: 28, emphasis: true, trim: 24 },
+                { key: 'qty', label: 'Qty', offset: 700, align: 'right', emphasis: true },
+                { key: 'avg', label: 'Avg', offset: 900, align: 'right', emphasis: true },
+                { key: 'ltp', label: 'LTP', offset: 1130, align: 'right', emphasis: true },
+                { key: 'pnl', label: 'P&L', offset: 1410, align: 'right', emphasis: true },
+            ],
+            rows,
+            footerLines: ['Total holdings: ' + response.length, 'Total P&L: ' + formatCurrency(totalPnL)],
         });
 
-        message += `-------------------\n`;
-        message += `*Total P&L: ${totalPnL >= 0 ? '🟢' : '🔴'} ${formatCurrency(totalPnL)}*`;
-
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return ctx.replyWithPhoto({ source: buffer, filename: 'holdings.png' }, { caption: 'Portfolio holdings snapshot' });
     } catch (err) {
-        ctx.reply(`❌ Error fetching holdings: ${err.message}`);
+        ctx.reply(`Error fetching holdings: ${err.message}`);
     }
 };
 

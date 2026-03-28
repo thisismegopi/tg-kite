@@ -1,18 +1,21 @@
-/**
+﻿/**
  * Mutual Funds Command Handlers
- * 
+ *
  * Telegram command handlers for Mutual Fund operations.
  * Commands: /mfholdings, /mforders, /mforder, /mfsips, /mfinstruments
  */
 
 const mfCache = require('../../storage/mfCache');
+const { renderTableImage } = require('../../chart/tableImage');
 
-// Utility: Format currency in INR
 const formatCurrency = val => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
 };
 
-// Utility: Format date string
+const formatCurrencyNumber = val => {
+    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+};
+
 const formatDate = dateStr => {
     if (!dateStr) return 'N/A';
     try {
@@ -23,62 +26,71 @@ const formatDate = dateStr => {
     }
 };
 
-/**
- * /mfholdings or /mutualfunds
- * Display mutual fund holdings with P&L summary
- */
 const mfHoldings = async ctx => {
     try {
-        ctx.reply('📊 Fetching mutual fund holdings...');
+        ctx.reply('Fetching mutual fund holdings...');
         const holdings = await ctx.kite.getMfHoldings();
 
         if (!holdings || holdings.length === 0) {
-            return ctx.reply('📭 You have no mutual fund holdings currently.');
+            return ctx.reply('You have no mutual fund holdings currently.');
         }
 
-        let message = '📊 *Mutual Fund Holdings*\n\n';
         let totalInvested = 0;
         let totalCurrent = 0;
 
-        holdings.forEach(h => {
-            const investedValue = h.average_price * h.quantity;
-            const currentValue = h.last_price * h.quantity;
+        const rows = holdings.map(holding => {
+            const investedValue = (holding.average_price || 0) * (holding.quantity || 0);
+            const currentValue = (holding.last_price || 0) * (holding.quantity || 0);
             const pnl = currentValue - investedValue;
             const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
-            
+
             totalInvested += investedValue;
             totalCurrent += currentValue;
-            
-            const emoji = pnl >= 0 ? '🟢' : '🔴';
-            const sign = pnl >= 0 ? '+' : '';
 
-            // Truncate fund name if too long
-            const fundName = h.fund.length > 35 ? h.fund.substring(0, 32) + '...' : h.fund;
-
-            message += `*${fundName}*\n`;
-            message += `📁 Folio: \`${h.folio}\`\n`;
-            message += `Units: ${h.quantity.toFixed(3)} | Avg NAV: ₹${h.average_price.toFixed(2)}\n`;
-            message += `Current NAV: ₹${h.last_price.toFixed(2)}\n`;
-            message += `Invested: ${formatCurrency(investedValue)}\n`;
-            message += `Current: ${formatCurrency(currentValue)}\n`;
-            message += `P&L: ${emoji} ${formatCurrency(pnl)} (${sign}${pnlPercent.toFixed(2)}%)\n\n`;
+            return {
+                cells: [
+                    { key: 'fund', text: holding.fund || 'N/A' },
+                    { key: 'units', text: formatCurrencyNumber(holding.quantity || 0) },
+                    { key: 'invested', text: formatCurrency(investedValue) },
+                    { key: 'current', text: formatCurrency(currentValue) },
+                    { key: 'avg', text: formatCurrencyNumber(holding.average_price || 0) },
+                    { key: 'nav', text: formatCurrencyNumber(holding.last_price || 0) },
+                    {
+                        key: 'pnl',
+                        text: formatCurrency(pnl) + ' (' + (pnl >= 0 ? '+' : '') + pnlPercent.toFixed(2) + '%)',
+                        tone: pnl > 0 ? 'gain' : pnl < 0 ? 'loss' : 'flat',
+                    },
+                ],
+            };
         });
 
-        // Summary
         const totalPnL = totalCurrent - totalInvested;
         const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
-        const summaryEmoji = totalPnL >= 0 ? '🟢' : '🔴';
-        const summarySign = totalPnL >= 0 ? '+' : '';
 
-        message += `━━━━━━━━━━━━━━━━━━━━\n`;
-        message += `📈 *Summary*\n`;
-        message += `Total Invested: ${formatCurrency(totalInvested)}\n`;
-        message += `Current Value: ${formatCurrency(totalCurrent)}\n`;
-        message += `Total P&L: ${summaryEmoji} ${formatCurrency(totalPnL)} (${summarySign}${totalPnLPercent.toFixed(2)}%)`;
+        const buffer = await renderTableImage({
+            title: 'Mutual Fund Holdings',
+            subtitle: 'Current mutual fund holdings snapshot',
+            columns: [
+                { key: 'fund', label: 'Fund', offset: 28, emphasis: true },
+                { key: 'units', label: 'Units', offset: 700, align: 'right', emphasis: true },
+                { key: 'invested', label: 'Invested', offset: 850, align: 'right', emphasis: true },
+                { key: 'current', label: 'Current', offset: 1000, align: 'right', emphasis: true },
+                { key: 'avg', label: 'Avg', offset: 1120, align: 'right', emphasis: true },
+                { key: 'nav', label: 'NAV', offset: 1220, align: 'right', emphasis: true },
+                { key: 'pnl', label: 'P&L', offset: 1450, align: 'right', emphasis: true },
+            ],
+            rows,
+            footerLines: [
+                'Total funds: ' + holdings.length,
+                'Total invested: ' + formatCurrency(totalInvested),
+                'Total current: ' + formatCurrency(totalCurrent),
+                'Total P&L: ' + formatCurrency(totalPnL) + ' (' + (totalPnL >= 0 ? '+' : '') + totalPnLPercent.toFixed(2) + '%)',
+            ],
+        });
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return ctx.replyWithPhoto({ source: buffer, filename: 'mf_holdings.png' }, { caption: 'Mutual fund holdings snapshot' });
     } catch (err) {
-        ctx.reply(`❌ Error fetching MF holdings: ${err.message}`);
+        ctx.reply(`Error fetching MF holdings: ${err.message}`);
     }
 };
 
@@ -100,10 +112,8 @@ const mfOrders = async ctx => {
         let message = '📋 *Recent MF Orders (Last 7 Days)*\n\n';
 
         recent.forEach(o => {
-            const statusEmoji = o.status === 'COMPLETE' ? '✅' : 
-                               o.status === 'REJECTED' ? '❌' : 
-                               o.status === 'OPEN' ? '🔄' : '⏳';
-            
+            const statusEmoji = o.status === 'COMPLETE' ? '✅' : o.status === 'REJECTED' ? '❌' : o.status === 'OPEN' ? '🔄' : '⏳';
+
             // Truncate fund name
             const fundName = o.fund.length > 30 ? o.fund.substring(0, 27) + '...' : o.fund;
 
@@ -147,9 +157,7 @@ const mfOrder = async ctx => {
             return ctx.reply('❌ Order not found.');
         }
 
-        const statusEmoji = order.status === 'COMPLETE' ? '✅' : 
-                           order.status === 'REJECTED' ? '❌' : 
-                           order.status === 'OPEN' ? '🔄' : '⏳';
+        const statusEmoji = order.status === 'COMPLETE' ? '✅' : order.status === 'REJECTED' ? '❌' : order.status === 'OPEN' ? '🔄' : '⏳';
 
         let message = `📄 *MF Order Details*\n\n`;
         message += `${statusEmoji} Status: *${order.status}*\n`;
@@ -198,9 +206,8 @@ const mfSips = async ctx => {
         let message = '📘 *SIP Orders*\n\n';
 
         sips.forEach(sip => {
-            const statusEmoji = sip.status === 'ACTIVE' ? '✅' : 
-                               sip.status === 'PAUSED' ? '⏸️' : '⏹️';
-            
+            const statusEmoji = sip.status === 'ACTIVE' ? '✅' : sip.status === 'PAUSED' ? '⏸️' : '⏹️';
+
             // Truncate fund name
             const fundName = sip.fund.length > 30 ? sip.fund.substring(0, 27) + '...' : sip.fund;
 
@@ -233,13 +240,13 @@ const mfInstruments = async ctx => {
     if (!searchTerm) {
         return ctx.reply(
             '🔍 *Search Mutual Funds*\n\n' +
-            'Usage: /mfinstruments <search term>\n\n' +
-            'Examples:\n' +
-            '• /mfinstruments hdfc balanced\n' +
-            '• /mfinstruments axis bluechip\n' +
-            '• /mfinstruments kotak flexi\n\n' +
-            '_This searches fund names, AMCs, and scheme codes._',
-            { parse_mode: 'Markdown' }
+                'Usage: /mfinstruments <search term>\n\n' +
+                'Examples:\n' +
+                '• /mfinstruments hdfc balanced\n' +
+                '• /mfinstruments axis bluechip\n' +
+                '• /mfinstruments kotak flexi\n\n' +
+                '_This searches fund names, AMCs, and scheme codes._',
+            { parse_mode: 'Markdown' },
         );
     }
 
@@ -256,7 +263,7 @@ const mfInstruments = async ctx => {
         results.forEach((inst, idx) => {
             // Truncate name if too long
             const name = inst.name.length > 40 ? inst.name.substring(0, 37) + '...' : inst.name;
-            
+
             message += `*${idx + 1}. ${name}*\n`;
             message += `📊 Symbol: \`${inst.tradingsymbol}\`\n`;
             message += `🏢 AMC: ${inst.amc.replace('_MF', '')}\n`;
@@ -279,5 +286,5 @@ module.exports = {
     mfOrders,
     mfOrder,
     mfSips,
-    mfInstruments
+    mfInstruments,
 };

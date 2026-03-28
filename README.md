@@ -1,190 +1,210 @@
 # Telegram Kite Trading Bot
 
-A production-ready Node.js Telegram bot for trading on Zerodha using the Kite Connect v3 API. This bot allows you to manage your portfolio, view funds, place orders, and get **AI-powered portfolio analysis** directly from Telegram.
+A Node.js Telegram bot for Zerodha Kite Connect v3. It supports authentication, portfolio views, orders, mutual funds, market quotes, historical chart images, and optional AI-powered portfolio analysis.
 
-## 🚀 Features
+## Features
 
-- **Authentication**: Secure login flow using Kite Connect (supports per-user sessions).
-- **Portfolio Management**: View current holdings with P&L and net positions.
-- **Funds**: Check available equity and commodity balance.
-- **Order Management**:
-  - Place Market and Limit orders (Buy/Sell).
-  - List recent orders.
-  - Check order status.
-- **Mutual Funds**: View MF holdings, orders, SIPs, and search schemes.
-- **🤖 AI Portfolio Analysis** (NEW):
-  - Powered by Google Gemini AI.
-  - Get diversification scores, risk analysis, and improvement suggestions.
-  - Ask custom questions about your portfolio.
-  - Credit-based system (10 free credits per user).
-- **Persistence**: SQLite storage to persist user sessions and AI credits.
-- **Security**: Environment variable configuration for API secrets.
-- **GitHub Pages Login**: Hosted login page for easy token extraction.
+- Kite login flow for Telegram users
+- Portfolio holdings, positions, and funds lookup
+- Order placement and order status tracking
+- Market data commands for quote, OHLC, and LTP
+- Historical candlestick chart images in chat
+- Mutual fund holdings, orders, SIPs, and instrument search
+- Optional Gemini-based portfolio analysis with credit tracking
+- SQLite persistence for user sessions and AI credits
 
-## 📋 Prerequisites
+## Prerequisites
 
-- **Node.js**: v16 or higher.
-- **Zerodha Kite Connect App**: You need a Kite Connect developer account.
-  - Create an app to get `API_KEY` and `API_SECRET`.
-  - Set the **Redirect URL** (see below).
-- **Telegram Bot**: Create a bot via [@BotFather](https://t.me/BotFather) to get the `BOT_TOKEN`.
-- **Google Gemini API Key** (Optional): For AI analysis features.
-  - Get your key from [Google AI Studio](https://aistudio.google.com/apikey).
+- Node.js 16+
+- Zerodha Kite Connect app
+- Telegram bot token from `@BotFather`
+- Optional Gemini API key for `/analyze`
 
-## 🛠️ Installation
+## Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/tg-kite.git
-   cd tg-kite
-   ```
+1. Clone the repository.
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+git clone https://github.com/yourusername/tg-kite.git
+cd tg-kite
+```
 
-3. **Deploy Login Page (GitHub Pages)**
-   - Go to `pages/index.html`.
-   - Edit the file and update `const BOT_USERNAME = 'your_bot_username';` with your actual Telegram bot username.
-   - Commit and push your code to GitHub.
-   - Go to Repo Settings -> Pages -> Deploy from branch (e.g., `main` or `master`) -> Folder `/pages` (if possible) or just root if you restructure. 
-   - *Alternative:* Push just the contents of `pages/` to a `gh-pages` branch.
-   - Get your GitHub Pages URL (e.g., `https://youruser.github.io/tg-kite/pages/`).
+2. Install dependencies.
 
-4. **Configure Environment Variables**
-   Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` and fill in your credentials:
-   ```env
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-   KITE_API_KEY=your_kite_api_key
-   KITE_API_SECRET=your_kite_api_secret
-   KITE_REDIRECT_URL=https://youruser.github.io/tg-kite/pages/
-   DB_FILE=kite_bot.db
+```bash
+npm install
+```
 
-   # AI Analysis (optional)
-   GEMINI_API_KEY=your_google_gemini_api_key
-   GEMINI_MODEL=gemini-2.0-flash
-   ```
-   > **Important**: Go to your Zerodha Developer Console and update the **Redirect URL** to match `KITE_REDIRECT_URL` exactly.
+3. Copy the environment file and fill in your values.
 
-## ▶️ Usage
+```bash
+cp .env.example .env
+```
 
-1. **Start the Bot**
-   ```bash
-   npm start
-   # OR
-   node index.js
-   ```
+Required variables:
 
-2. **Open Telegram**
-   Search for your bot and click **Start**.
+```env
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+KITE_API_KEY=your_kite_api_key
+KITE_API_SECRET=your_kite_api_secret
+KITE_REDIRECT_URL=https://youruser.github.io/tg-kite/pages/
+DB_FILE=kite_bot.db
+```
 
-3. **Login Flow**
-   - Send `/login`.
-   - Click the generated login link to authenticate with Zerodha.
-   - You will be redirected to your GitHub Page.
-   - Click **Copy Token** and then **Return to Bot**.
-   - Paste the token into the Telegram chat.
+Optional AI variables:
 
-## 🤖 Commands
+```env
+GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_MODEL=gemini-2.0-flash
+```
 
-### Core Commands
+4. Configure the static login page in [pages/index.html](pages/index.html) with your bot username.
+
+5. Start the bot.
+
+```bash
+npm start
+```
+
+## Login Flow
+
+1. Open the bot in Telegram.
+2. Run `/login`.
+3. Complete the Zerodha login in the browser.
+4. Copy the `request_token` from the redirect page.
+5. Paste the token back into the Telegram chat.
+
+## Commands
+
+### Core
 
 | Command | Description |
 |---------|-------------|
-| `/start` | Welcome message and instructions |
-| `/login` | Generate Kite login link |
-| `/logout` | Clear local session data |
-| `/help` | List available commands |
+| `/start` | Welcome message |
+| `/help` | Show command list |
+| `/login` | Start Kite login flow |
+| `/logout` | Clear saved session |
 
-### Portfolio & Trading
+### Portfolio
 
 | Command | Description |
 |---------|-------------|
-| `/portfolio` | View current holdings and P&L |
-| `/positions` | View net positions (Day + Carry) |
-| `/funds` | View available account balance |
-| `/orders` | List recent orders for the day |
-| `/buy <SYMBOL> <QTY>` | Place a buy order (Default: Market, CNC) |
+| `/portfolio` or `/holdings` | Show equity holdings |
+| `/positions` | Show net positions |
+| `/funds` or `/balance` | Show account funds |
+
+### Orders
+
+| Command | Description |
+|---------|-------------|
+| `/buy <SYMBOL> <QTY>` | Place a buy order |
 | `/sell <SYMBOL> <QTY>` | Place a sell order |
+| `/orders` | Show recent orders |
+| `/orderstatus <ORDER_ID>` | Show order status |
 
-**Order Examples:**
-- Market Order (Default): `/buy TCS 10`
-- Limit Order: `/buy INFY 5 LIMIT 1450`
-- Intraday (MIS): `/sell RELIANCE 10 MARKET MIS`
+Examples:
 
-### 📊 Mutual Fund Commands
+- `/buy TCS 10`
+- `/buy INFY 5 LIMIT 1450`
+- `/sell RELIANCE 10 MARKET MIS`
+
+### Market Data
 
 | Command | Description |
 |---------|-------------|
-| `/mfholdings` | View MF holdings with P&L (alias: `/mutualfunds`) |
-| `/mforders` | List MF orders (last 7 days) |
-| `/mforder <order_id>` | View individual MF order details |
-| `/mfsips` | View active and paused SIPs |
-| `/mfinstruments <query>` | Search mutual fund schemes |
+| `/quote <INSTRUMENT>` | Full quote snapshot |
+| `/ohlc <INSTRUMENT>` | OHLC + LTP |
+| `/ltp <INSTRUMENT>` | Last traded price |
+| `/chart <INSTRUMENT> <TIMEFRAME>` | Candlestick chart image |
 
-### 🤖 AI Portfolio Analysis
+Supported chart timeframes:
+
+- `1m`
+- `3m`
+- `5m`
+- `30m`
+- `1h`
+- `1d`
+- `1w`
+- `1M`
+- `12M`
+
+Examples:
+
+- `/quote NSE:INFY`
+- `/ohlc INFY`
+- `/ltp NSE:INFY`
+- `/chart NSE:INFY 5m`
+- `/chart INFY 1d`
+- `/chart NSE:NIFTY%2050 1w`
+- `/chart NIFTY 50 1w`
+
+Notes:
+
+- Plain symbols default to `NSE:`.
+- For quote-style commands, instruments with spaces should be passed as quoted strings or URL-encoded.
+- Examples: `/quote "NIFTY 50"` or `/quote NSE:NIFTY%2050`
+- For multiple instruments, prefer comma-separated input.
+- Example: `/ltp "NIFTY 50", NSE:INFY`
+
+### Mutual Funds
+
+| Command | Description |
+|---------|-------------|
+| `/mfholdings` | Show MF holdings |
+| `/mforders` | Show recent MF orders |
+| `/mforder <ORDER_ID>` | Show MF order details |
+| `/mfsips` | Show SIPs |
+| `/mfinstruments <QUERY>` | Search MF instruments |
+
+### AI Analysis
 
 | Command | Description |
 |---------|-------------|
 | `/analyze` | Quick AI portfolio summary |
-| `/analyze detailed` | Full breakdown with risk & allocation |
-| `/analyze credits` | Check your AI credits balance |
-| `/analyze <question>` | Ask any question about your portfolio |
+| `/analyze detailed` | Detailed AI breakdown |
+| `/analyze credits` | Show remaining AI credits |
+| `/analyze <QUESTION>` | Ask a portfolio question |
 
-**Example Questions:**
+Examples:
+
 - `/analyze what are my risky holdings?`
-- `/analyze how is my portfolio diversified?`
-- `/analyze list my top investments`
+- `/analyze how diversified am I?`
 - `/analyze which sector am I overexposed to?`
 
-**AI Features:**
-- 📈 Diversification score (1-10)
-- ⚖️ Risk profile assessment
-- 💡 Key portfolio insights
-- ✨ Improvement suggestions
-- 🎫 Credit-based system (10 free credits per user)
+## Project Structure
 
-> ⚠️ **Disclaimer**: AI analysis is educational only, not investment advice. No buy/sell recommendations are provided.
-
-## 📂 Project Structure
-
-```
+```text
 tg-kite/
-├── pages/               # Static HTML for GitHub Pages Redirect
-│   └── index.html
-├── src/
-│   ├── ai/              # AI analysis modules
-│   │   ├── geminiClient.js      # Gemini SDK wrapper
-│   │   └── portfolioAnalyzer.js # Portfolio aggregation & analysis
-│   ├── bot/
-│   │   ├── handlers/    # Command logic (auth, orders, portfolio, analyze)
-│   │   └── middleware/  # Auth middleware
-│   ├── kite/            # Kite Connect API wrapper
-│   ├── storage/         # SQLite database (sessions + AI credits)
-│   └── config/          # Environment configuration
-├── index.js             # Entry point
-├── .env                 # Secrets (gitignored)
-└── package.json
+|-- pages/
+|   `-- index.html
+|-- src/
+|   |-- ai/
+|   |-- bot/
+|   |   |-- handlers/
+|   |   `-- middleware/
+|   |-- chart/
+|   |-- config/
+|   |-- kite/
+|   `-- storage/
+|-- index.js
+|-- package.json
+`-- README.md
 ```
 
-## 🗄️ Database Tables
+## Storage
 
-| Table | Purpose |
-|-------|---------|
-| `sessions` | User authentication tokens |
-| `ai_credits` | AI analysis credits per user |
+SQLite tables:
 
-## ⚠️ Disclaimer
+- `sessions`: Kite session data per Telegram user
+- `ai_credits`: AI credit balance and usage tracking
 
-This software is for educational purposes only. Trading involves financial risk. The developers are not responsible for any financial losses incurred while using this bot. Ensure you test with small quantities before trading with significant capital.
+## Notes
 
-AI-powered analysis is for educational purposes only and does not constitute investment advice.
+- Historical chart rendering is generated locally and sent as a PNG image.
+- Weekly, monthly, and 12-month chart views are aggregated locally from daily candle data.
+- AI analysis is educational only and not investment advice.
 
-## 📄 License
+## License
 
 ISC

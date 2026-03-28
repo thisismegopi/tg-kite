@@ -44,6 +44,12 @@ const help = ctx => {
 /orders - List Recent Orders
 /orderstatus <id> - Check Order Status
 
+*Market Data*
+/quote <instrument> - Full market quote
+/ohlc <instrument> - OHLC + LTP
+/ltp <instrument> - Last traded price
+/chart <instrument> <timeframe> - Candlestick chart image
+
 *Mutual Funds*
 /mfholdings - View MF Holdings
 /mforders - List MF Orders (7 days)

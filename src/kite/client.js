@@ -124,6 +124,66 @@ class KiteClient {
         return this._get(`/orders/${orderId}`);
     }
 
+    // --- Market Quotes ---
+
+    /**
+     * Get full market quotes for one or more instruments.
+     * @param {string[]} instruments - Array of exchange:symbol keys
+     */
+    async getQuote(instruments) {
+        return this._getQuoteData('/quote', instruments);
+    }
+
+    /**
+     * Get OHLC quotes for one or more instruments.
+     * @param {string[]} instruments - Array of exchange:symbol keys
+     */
+    async getOhlc(instruments) {
+        return this._getQuoteData('/quote/ohlc', instruments);
+    }
+
+    /**
+     * Get LTP quotes for one or more instruments.
+     * @param {string[]} instruments - Array of exchange:symbol keys
+     */
+    async getLtp(instruments) {
+        return this._getQuoteData('/quote/ltp', instruments);
+    }
+
+    // --- Historical Data ---
+
+    /**
+     * Get historical candle data for an instrument token.
+     * @param {number|string} instrumentToken
+     * @param {string} interval
+     * @param {{ from: string, to: string, continuous?: number, oi?: number }} options
+     */
+    async getHistoricalData(instrumentToken, interval, options) {
+        if (!instrumentToken) {
+            throw new Error('instrument_token is required.');
+        }
+
+        if (!interval) {
+            throw new Error('interval is required.');
+        }
+
+        const params = new URLSearchParams();
+        params.append('from', options.from);
+        params.append('to', options.to);
+
+        if (options.continuous !== undefined) {
+            params.append('continuous', String(options.continuous));
+        }
+
+        if (options.oi !== undefined) {
+            params.append('oi', String(options.oi));
+        }
+
+        const endpoint = `/instruments/historical/${instrumentToken}/${interval}?${params.toString()}`;
+        const res = await this.client.get(endpoint);
+        return res.data;
+    }
+
     // --- Mutual Funds ---
 
     /**
@@ -181,6 +241,18 @@ class KiteClient {
         const res = await this.client.post(endpoint, data, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         });
+        return res.data;
+    }
+
+    async _getQuoteData(endpoint, instruments) {
+        if (!Array.isArray(instruments) || instruments.length === 0) {
+            throw new Error('At least one instrument is required.');
+        }
+
+        const params = new URLSearchParams();
+        instruments.forEach(instrument => params.append('i', instrument));
+
+        const res = await this.client.get(`${endpoint}?${params.toString()}`);
         return res.data;
     }
 }

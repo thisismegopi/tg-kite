@@ -40,8 +40,19 @@ function init() {
     )
   `;
 
+    const createWatchlistTable = `
+    CREATE TABLE IF NOT EXISTS user_watchlist (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_user_id TEXT NOT NULL,
+      instrument TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE (telegram_user_id, instrument)
+    )
+  `;
+
     db.exec(createSessionsTable);
     db.exec(createCreditsTable);
+    db.exec(createWatchlistTable);
     console.log('Database initialized successfully.');
     return db;
 }
@@ -149,6 +160,60 @@ function addAiCredits(telegramUserId, amount) {
     return getAiCredits(id);
 }
 
+function addWatchlistInstruments(telegramUserId, instruments) {
+    if (!db) init();
+
+    const id = String(telegramUserId);
+    const now = Date.now();
+    const insert = db.prepare(`
+        INSERT OR IGNORE INTO user_watchlist (telegram_user_id, instrument, created_at)
+        VALUES (?, ?, ?)
+    `);
+
+    const transaction = db.transaction(items => {
+        let added = 0;
+        for (const instrument of items) {
+            const info = insert.run(id, instrument, now);
+            added += info.changes;
+        }
+        return added;
+    });
+
+    return transaction(instruments);
+}
+
+function getWatchlistInstruments(telegramUserId) {
+    if (!db) init();
+
+    return db.prepare(`
+        SELECT instrument, created_at
+        FROM user_watchlist
+        WHERE telegram_user_id = ?
+        ORDER BY instrument ASC
+    `).all(String(telegramUserId));
+}
+
+function removeWatchlistInstruments(telegramUserId, instruments) {
+    if (!db) init();
+
+    const id = String(telegramUserId);
+    const remove = db.prepare(`
+        DELETE FROM user_watchlist
+        WHERE telegram_user_id = ? AND instrument = ?
+    `);
+
+    const transaction = db.transaction(items => {
+        let removed = 0;
+        for (const instrument of items) {
+            const info = remove.run(id, instrument);
+            removed += info.changes;
+        }
+        return removed;
+    });
+
+    return transaction(instruments);
+}
+
 function close() {
     if (db) {
         db.close();
@@ -165,6 +230,9 @@ module.exports = {
     getAiCredits,
     consumeAiCredit,
     addAiCredits,
+    addWatchlistInstruments,
+    getWatchlistInstruments,
+    removeWatchlistInstruments,
     close,
     DEFAULT_AI_CREDITS
 };

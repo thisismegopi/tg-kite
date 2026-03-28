@@ -146,7 +146,7 @@ async function buildChartImage(kiteClient, instrument, timeframe) {
         throw new Error(`No candles found for ${instrument} on ${timeframe}.`);
     }
 
-    return renderCandlestickChart({
+    return await renderCandlestickChart({
         candles,
         instrument,
         intervalLabel: label

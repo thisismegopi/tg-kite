@@ -9,6 +9,7 @@ const marketQuoteHandlers = require('./src/bot/handlers/marketQuotes');
 const chartHandlers = require('./src/bot/handlers/chart');
 const mfHandlers = require('./src/bot/handlers/mutualFunds');
 const analyzeHandlers = require('./src/bot/handlers/analyze');
+const watchlistHandlers = require('./src/bot/handlers/watchlist');
 
 // 1. Initialize Database
 db.init();
@@ -38,6 +39,9 @@ bot.command('quote', authMiddleware.requireAuth, marketQuoteHandlers.quote);
 bot.command('ohlc', authMiddleware.requireAuth, marketQuoteHandlers.ohlc);
 bot.command('ltp', authMiddleware.requireAuth, marketQuoteHandlers.ltp);
 bot.command('chart', authMiddleware.requireAuth, chartHandlers.chart);
+bot.command('watchadd', authMiddleware.requireAuth, watchlistHandlers.add);
+bot.command('watchremove', authMiddleware.requireAuth, watchlistHandlers.remove);
+bot.command('watchlist', authMiddleware.requireAuth, watchlistHandlers.list);
 
 // 7. Command Handlers - Mutual Funds (Require Auth)
 bot.command(['mfholdings', 'mutualfunds'], authMiddleware.requireAuth, mfHandlers.mfHoldings);

@@ -1,7 +1,7 @@
 import type { MfHoldingRecord, MfInstrumentRecord, MfOrderRecord, MfSipRecord } from '../../types/kite';
 
 import mfCache from '../../storage/mfCache';
-import { renderTableImage } from '../../chart/tableImage';
+import { renderTableImage, type TableRow } from '../../chart/tableImage';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
@@ -21,6 +21,14 @@ const formatDate = (dateStr?: string) => {
     }
 };
 
+const mfHoldingMetrics = (holding: MfHoldingRecord) => {
+    const investedValue = (holding.average_price || 0) * (holding.quantity || 0);
+    const currentValue = (holding.last_price || 0) * (holding.quantity || 0);
+    const pnl = currentValue - investedValue;
+    const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
+    return { holding, investedValue, currentValue, pnl, pnlPercent };
+};
+
 const mfHoldings = async (ctx: any) => {
     try {
         ctx.reply('📥 Fetching mutual fund holdings...');
@@ -30,18 +38,13 @@ const mfHoldings = async (ctx: any) => {
             return ctx.reply('📭 You have no mutual fund holdings currently.');
         }
 
+        const sorted = holdings.map(mfHoldingMetrics).sort((a, b) => b.pnlPercent - a.pnlPercent);
+
         let totalInvested = 0;
         let totalCurrent = 0;
-
-        const rows = holdings.map(holding => {
-            const investedValue = (holding.average_price || 0) * (holding.quantity || 0);
-            const currentValue = (holding.last_price || 0) * (holding.quantity || 0);
-            const pnl = currentValue - investedValue;
-            const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
-
+        const rows: TableRow[] = sorted.map(({ holding, investedValue, currentValue, pnl, pnlPercent }) => {
             totalInvested += investedValue;
             totalCurrent += currentValue;
-
             return {
                 cells: [
                     { key: 'fund', text: holding.fund || 'N/A' },
@@ -63,7 +66,7 @@ const mfHoldings = async (ctx: any) => {
         const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
 
         const buffer = await renderTableImage({
-            title: 'Mutual Fund Holdings',
+            title: `Mutual Fund Holdings - ${new Date().toDateString()}`,
             subtitle: 'Current mutual fund holdings snapshot',
             columns: [
                 { key: 'fund', label: 'Fund', offset: 28, emphasis: true },

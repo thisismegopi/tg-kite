@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "rootDir": ".",
+        "outDir": "dist",
+        "allowJs": true,
+        "checkJs": false,
+        "strict": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "types": ["node"]
+    },
+    "include": ["index.js", "src/**/*", "drizzle.config.ts"],
+    "exclude": ["dist", "node_modules"]
+}

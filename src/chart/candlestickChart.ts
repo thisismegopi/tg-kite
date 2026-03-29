@@ -1,34 +1,50 @@
-﻿const fs = require('fs');
-const path = require('path');
-const sharp = require('sharp');
+import fs from "fs";
+import path from "path";
+import sharp from "sharp";
 
-const FONT_FILE = path.resolve(process.cwd(), 'node_modules', '@fontsource-variable', 'inter', 'files', 'inter-latin-wght-normal.woff2');
-let embeddedFontCss;
+const FONT_FILE = path.resolve(process.cwd(), "node_modules", "@fontsource-variable", "inter", "files", "inter-latin-wght-normal.woff2");
+let embeddedFontCss: string | undefined;
+
+interface Candle {
+    timestamp: Date;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+}
+
+interface RenderCandlestickChartOptions {
+    candles: Candle[];
+    instrument: string;
+    intervalLabel: string;
+}
 
 function ensureFontCss() {
     if (!embeddedFontCss) {
-        const fontData = fs.readFileSync(FONT_FILE).toString('base64');
-        embeddedFontCss = '@font-face {' +
+        const fontData = fs.readFileSync(FONT_FILE).toString("base64");
+        embeddedFontCss =
+            "@font-face {" +
             "font-family: 'Inter';" +
-            'src: url(data:font/woff2;base64,' + fontData + ') format("woff2");' +
-            'font-weight: 100 900;' +
-            'font-style: normal;' +
-            '}';
+            `src: url(data:font/woff2;base64,${fontData}) format("woff2");` +
+            "font-weight: 100 900;" +
+            "font-style: normal;" +
+            "}";
     }
 
     return embeddedFontCss;
 }
 
-function escapeXml(value) {
+function escapeXml(value: string) {
     return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
 }
 
-function getMinMax(candles) {
+function getMinMax(candles: Candle[]) {
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
 
@@ -50,28 +66,28 @@ function getMinMax(candles) {
     return { min, max };
 }
 
-function formatPrice(value) {
+function formatPrice(value: number) {
     return Number(value).toFixed(2);
 }
 
-function formatXAxisLabel(timestamp, intervalLabel) {
+function formatXAxisLabel(timestamp: Date, intervalLabel: string) {
     const date = new Date(timestamp);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = String(date.getFullYear()).slice(-2);
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
 
-    if (['1m', '3m', '5m', '30m', '1h'].includes(intervalLabel)) {
+    if (["1m", "3m", "5m", "30m", "1h"].includes(intervalLabel)) {
         return `${day}/${month} ${hours}:${minutes}`;
     }
 
     return `${day}/${month}/${year}`;
 }
 
-async function renderCandlestickChart({ candles, instrument, intervalLabel }) {
+async function renderCandlestickChart({ candles, instrument, intervalLabel }: RenderCandlestickChartOptions) {
     if (!Array.isArray(candles) || candles.length === 0) {
-        throw new Error('No candles available for chart rendering.');
+        throw new Error("No candles available for chart rendering.");
     }
 
     const width = 1280;
@@ -80,27 +96,27 @@ async function renderCandlestickChart({ candles, instrument, intervalLabel }) {
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     const palette = {
-        bg: '#ffffff',
-        panel: '#ffffff',
-        grid: '#e7e7e7',
-        axis: '#8a8a8a',
-        bull: '#178f5d',
-        bear: '#c6493c',
-        text: '#1f1f1f',
-        volume: '#d9e3f0',
-        priceLine: '#8d8d8d'
+        bg: "#ffffff",
+        panel: "#ffffff",
+        grid: "#e7e7e7",
+        axis: "#8a8a8a",
+        bull: "#178f5d",
+        bear: "#c6493c",
+        text: "#1f1f1f",
+        volume: "#d9e3f0",
+        priceLine: "#8d8d8d",
     };
 
     const { min, max } = getMinMax(candles);
     const priceRange = max - min;
-    const scaleY = value => {
+    const scaleY = (value: number) => {
         const normalized = (value - min) / priceRange;
         return padding.top + chartHeight - normalized * chartHeight;
     };
 
-    const gridLines = [];
-    const priceLabels = [];
-    for (let i = 0; i <= 5; i++) {
+    const gridLines: string[] = [];
+    const priceLabels: string[] = [];
+    for (let i = 0; i <= 5; i += 1) {
         const y = padding.top + (chartHeight / 5) * i;
         const price = max - (priceRange / 5) * i;
         gridLines.push(`<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${palette.grid}" stroke-width="1" />`);
@@ -131,14 +147,14 @@ async function renderCandlestickChart({ candles, instrument, intervalLabel }) {
             <line x1="${xCenter}" y1="${wickTop}" x2="${xCenter}" y2="${wickBottom}" stroke="${fill}" stroke-width="1" />
             <rect x="${bodyLeft}" y="${bodyTop}" width="${bodyWidth}" height="${bodyHeight}" fill="${fill}" />
         `;
-    }).join('');
+    }).join("");
 
     const lastClose = candles[candles.length - 1].close;
     const lastY = scaleY(lastClose);
 
     const labelCount = Math.min(6, candles.length);
-    const xAxisLabels = [];
-    for (let i = 0; i < labelCount; i++) {
+    const xAxisLabels: string[] = [];
+    for (let i = 0; i < labelCount; i += 1) {
         const candleIndex = Math.min(candles.length - 1, Math.round((i * (candles.length - 1)) / Math.max(1, labelCount - 1)));
         const candle = candles[candleIndex];
         const xCenter = padding.left + slotWidth * candleIndex + slotWidth / 2;
@@ -162,14 +178,14 @@ async function renderCandlestickChart({ candles, instrument, intervalLabel }) {
             </defs>
             <rect width="100%" height="100%" fill="${palette.bg}" />
             <rect x="24" y="24" width="${width - 48}" height="${height - 48}" fill="${palette.panel}" />
-            ${gridLines.join('')}
+            ${gridLines.join("")}
             <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartHeight}" stroke="${palette.axis}" stroke-width="2" />
             <line x1="${padding.left}" y1="${padding.top + chartHeight}" x2="${width - padding.right}" y2="${padding.top + chartHeight}" stroke="${palette.axis}" stroke-width="2" />
-            ${priceLabels.join('')}
+            ${priceLabels.join("")}
             ${candleSvg}
             <line x1="${padding.left}" y1="${lastY}" x2="${width - padding.right}" y2="${lastY}" stroke="${palette.priceLine}" stroke-width="1" />
             <text x="${width - padding.right + 8}" y="${lastY + 6}" class="axis-label">${formatPrice(lastClose)}</text>
-            ${xAxisLabels.join('')}
+            ${xAxisLabels.join("")}
             <text x="52" y="54" class="title">${escapeXml(instrument)}</text>
             <text x="${width - 130}" y="54" class="subtitle right">${escapeXml(intervalLabel)}</text>
         </svg>
@@ -181,10 +197,8 @@ async function renderCandlestickChart({ candles, instrument, intervalLabel }) {
 
     return {
         buffer,
-        caption: `${instrument} ${intervalLabel} chart (${candles.length} candles, last 100 max)`
+        caption: `${instrument} ${intervalLabel} chart (${candles.length} candles, last 100 max)`,
     };
 }
 
-module.exports = {
-    renderCandlestickChart
-};
+export { renderCandlestickChart };

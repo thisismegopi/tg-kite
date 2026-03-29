@@ -1,4 +1,6 @@
-const { renderCandlestickChart } = require('./candlestickChart');
+import type { HistoricalDataResponse } from '../types/kite';
+import type KiteClient from '../kite/client';
+import { renderCandlestickChart } from './candlestickChart';
 
 const TIMEFRAME_MAP = {
     '1m': { mode: 'direct', interval: 'minute', lookbackDays: 7, label: '1m' },
@@ -9,30 +11,28 @@ const TIMEFRAME_MAP = {
     '1d': { mode: 'direct', interval: 'day', lookbackDays: 220, label: '1d' },
     '1w': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 900, bucket: 'week', label: '1w' },
     '1M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 4200, bucket: 'month', label: '1M' },
-    '12M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 36500, bucket: 'year', label: '12M' }
-};
+    '12M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 36500, bucket: 'year', label: '12M' },
+} as const;
 
-function pad(value) {
+interface Candle {
+    timestamp: Date;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    oi: number | null;
+}
+
+function pad(value: number) {
     return String(value).padStart(2, '0');
 }
 
-function formatDateTime(date) {
-    return [
-        date.getFullYear(),
-        '-',
-        pad(date.getMonth() + 1),
-        '-',
-        pad(date.getDate()),
-        ' ',
-        pad(date.getHours()),
-        ':',
-        pad(date.getMinutes()),
-        ':',
-        pad(date.getSeconds())
-    ].join('');
+function formatDateTime(date: Date) {
+    return [date.getFullYear(), '-', pad(date.getMonth() + 1), '-', pad(date.getDate()), ' ', pad(date.getHours()), ':', pad(date.getMinutes()), ':', pad(date.getSeconds())].join('');
 }
 
-function parseCandle(row) {
+function parseCandle(row: [string, number, number, number, number, number?, number?]): Candle {
     return {
         timestamp: new Date(row[0]),
         open: Number(row[1]),
@@ -40,31 +40,31 @@ function parseCandle(row) {
         low: Number(row[3]),
         close: Number(row[4]),
         volume: Number(row[5] || 0),
-        oi: row[6] !== undefined ? Number(row[6]) : null
+        oi: row[6] !== undefined ? Number(row[6]) : null,
     };
 }
 
-function weekKey(date) {
+function weekKey(date: Date) {
     const utc = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = utc.getUTCDay() || 7;
     utc.setUTCDate(utc.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+    const weekNo = Math.ceil(((utc.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
     return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
-function monthKey(date) {
+function monthKey(date: Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function yearKey(date) {
+function yearKey(date: Date) {
     return `${date.getFullYear()}`;
 }
 
-function aggregateCandles(candles, bucket) {
+function aggregateCandles(candles: Candle[], bucket: 'week' | 'month' | 'year') {
     const keyFn = bucket === 'week' ? weekKey : bucket === 'month' ? monthKey : yearKey;
-    const grouped = [];
-    let current = null;
+    const grouped: Array<Candle & { key?: string }> = [];
+    let current: (Candle & { key?: string }) | null = null;
 
     candles.forEach(candle => {
         const key = keyFn(candle.timestamp);
@@ -78,7 +78,7 @@ function aggregateCandles(candles, bucket) {
                 low: candle.low,
                 close: candle.close,
                 volume: candle.volume || 0,
-                oi: candle.oi
+                oi: candle.oi,
             };
             grouped.push(current);
             return;
@@ -94,15 +94,15 @@ function aggregateCandles(candles, bucket) {
     return grouped.map(({ key, ...candle }) => candle);
 }
 
-function getTimeframeConfig(timeframe) {
-    const config = TIMEFRAME_MAP[timeframe];
+function getTimeframeConfig(timeframe: string) {
+    const config = TIMEFRAME_MAP[timeframe as keyof typeof TIMEFRAME_MAP];
     if (!config) {
         throw new Error('Unsupported timeframe. Use 1m, 3m, 5m, 30m, 1h, 1d, 1w, 1M, or 12M.');
     }
     return config;
 }
 
-async function resolveInstrumentToken(kiteClient, instrument) {
+async function resolveInstrumentToken(kiteClient: KiteClient, instrument: string) {
     const ltpMap = await kiteClient.getLtp([instrument]);
     const quote = ltpMap[instrument];
 
@@ -113,7 +113,7 @@ async function resolveInstrumentToken(kiteClient, instrument) {
     return quote.instrument_token;
 }
 
-async function fetchCandles(kiteClient, instrument, timeframe) {
+async function fetchCandles(kiteClient: KiteClient, instrument: string, timeframe: string) {
     const config = getTimeframeConfig(timeframe);
     const instrumentToken = await resolveInstrumentToken(kiteClient, instrument);
 
@@ -121,11 +121,11 @@ async function fetchCandles(kiteClient, instrument, timeframe) {
     const from = new Date(to.getTime() - config.lookbackDays * 24 * 60 * 60 * 1000);
 
     const sourceInterval = config.mode === 'direct' ? config.interval : config.sourceInterval;
-    const response = await kiteClient.getHistoricalData(instrumentToken, sourceInterval, {
+    const response = (await kiteClient.getHistoricalData(instrumentToken, sourceInterval, {
         from: formatDateTime(from),
         to: formatDateTime(to),
-        oi: 0
-    });
+        oi: 0,
+    })) as HistoricalDataResponse;
 
     const candles = Array.isArray(response?.candles) ? response.candles.map(parseCandle) : [];
     if (candles.length === 0) {
@@ -135,26 +135,26 @@ async function fetchCandles(kiteClient, instrument, timeframe) {
     const processed = config.mode === 'aggregate' ? aggregateCandles(candles, config.bucket) : candles;
     return {
         candles: processed.slice(-100),
-        label: config.label
+        label: config.label,
     };
 }
 
-async function buildChartImage(kiteClient, instrument, timeframe) {
+async function buildChartImage(kiteClient: KiteClient, instrument: string, timeframe: string) {
     const { candles, label } = await fetchCandles(kiteClient, instrument, timeframe);
 
     if (candles.length === 0) {
         throw new Error(`No candles found for ${instrument} on ${timeframe}.`);
     }
 
-    return await renderCandlestickChart({
+    return renderCandlestickChart({
         candles,
         instrument,
-        intervalLabel: label
+        intervalLabel: label,
     });
 }
 
-module.exports = {
+export = {
     buildChartImage,
     fetchCandles,
-    getTimeframeConfig
+    getTimeframeConfig,
 };

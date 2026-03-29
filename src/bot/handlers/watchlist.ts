@@ -1,21 +1,25 @@
-﻿const db = require('../../storage/db');
-const { renderTableImage } = require('../../chart/tableImage');
-const { extractInstruments } = require('./marketQuotes');
+import type { QuoteData, QuoteMap } from '../../types/kite';
 
-const formatCurrency = val => {
-    if (typeof val !== 'number') return 'N/A';
+import db from '../../storage/db';
+import marketQuoteHandlers from './marketQuotes';
+import { renderTableImage } from '../../chart/tableImage';
+
+const { extractInstruments } = marketQuoteHandlers;
+
+const formatCurrency = (value: unknown) => {
+    if (typeof value !== 'number') return 'N/A';
     return new Intl.NumberFormat('en-IN', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-    }).format(val);
+    }).format(value);
 };
 
-const formatPercent = val => {
-    if (typeof val !== 'number') return 'N/A';
-    return `${val.toFixed(2)}%`;
+const formatPercent = (value: unknown) => {
+    if (typeof value !== 'number') return 'N/A';
+    return `${value.toFixed(2)}%`;
 };
 
-function getDayChangeData(quote) {
+function getDayChangeData(quote?: QuoteData | null) {
     const lastPrice = quote?.last_price;
     const prevClose = quote?.ohlc?.close;
 
@@ -28,7 +32,7 @@ function getDayChangeData(quote) {
     return { change, percent };
 }
 
-function formatWatchlistItem(instrument, quote) {
+function formatWatchlistItem(instrument: string, quote?: QuoteData) {
     if (!quote) {
         return `*${instrument}*\nLTP: N/A\nDay: Data unavailable`;
     }
@@ -44,10 +48,10 @@ function formatWatchlistItem(instrument, quote) {
     const signedChange = `${dayChange.change >= 0 ? '+' : ''}${formatCurrency(dayChange.change)}`;
     const signedPercent = `${dayChange.percent >= 0 ? '+' : ''}${formatPercent(dayChange.percent)}`;
 
-    return `*${instrument}*\n` + `LTP: ${lastPrice}\n` + `Day: ${direction} ${signedChange} (${signedPercent})`;
+    return `*${instrument}*\nLTP: ${lastPrice}\nDay: ${direction} ${signedChange} (${signedPercent})`;
 }
 
-function buildWatchlistRows(instruments, quoteMap) {
+function buildWatchlistRows(instruments: string[], quoteMap: QuoteMap) {
     return instruments
         .map(instrument => {
             const quote = quoteMap[instrument];
@@ -84,11 +88,11 @@ function buildWatchlistRows(instruments, quoteMap) {
         });
 }
 
-function getWatchlistUsage(commandName) {
-    return `Usage: /${commandName} <instrument> [more_instruments]\n\n` + 'Examples:\n' + `/${commandName} INFY\n` + `/${commandName} NSE:INFY, BSE:TCS\n` + `/${commandName} "NIFTY 50"`;
+function getWatchlistUsage(commandName: string) {
+    return `Usage: /${commandName} <instrument> [more_instruments]\n\nExamples:\n/${commandName} INFY\n/${commandName} NSE:INFY, BSE:TCS\n/${commandName} "NIFTY 50"`;
 }
 
-async function add(ctx) {
+async function add(ctx: any) {
     const instruments = extractInstruments(ctx.message.text);
 
     if (instruments.length === 0) {
@@ -105,12 +109,12 @@ async function add(ctx) {
         }
 
         return ctx.reply(message);
-    } catch (err) {
+    } catch (err: any) {
         return ctx.reply(`Error updating watchlist: ${err.message}`);
     }
 }
 
-async function remove(ctx) {
+async function remove(ctx: any) {
     const instruments = extractInstruments(ctx.message.text);
 
     if (instruments.length === 0) {
@@ -127,12 +131,12 @@ async function remove(ctx) {
         }
 
         return ctx.reply(message);
-    } catch (err) {
+    } catch (err: any) {
         return ctx.reply(`Error updating watchlist: ${err.message}`);
     }
 }
 
-async function list(ctx) {
+async function list(ctx: any) {
     try {
         const entries = db.getWatchlistInstruments(ctx.from.id);
 
@@ -140,8 +144,8 @@ async function list(ctx) {
             return ctx.reply('Your watchlist is empty.\n\nUse /watchadd <instrument> to save instruments for quick access.');
         }
 
-        const instruments = entries.map(entry => entry.instrument);
-        const quoteMap = await ctx.kite.getQuote(instruments);
+        const instruments = entries.map((entry: { instrument: string }) => entry.instrument);
+        const quoteMap = (await ctx.kite.getQuote(instruments)) as QuoteMap;
         const sortedRows = buildWatchlistRows(instruments, quoteMap);
         const rowsWithData = sortedRows.filter(row => row.hasData);
 
@@ -183,12 +187,12 @@ async function list(ctx) {
         });
 
         return ctx.replyWithPhoto({ source: buffer, filename: 'watchlist.png' }, { caption: 'Watchlist sorted by day gainers to losers' });
-    } catch (err) {
+    } catch (err: any) {
         return ctx.reply(`Error loading watchlist: ${err.message}`);
     }
 }
 
-module.exports = {
+export = {
     add,
     remove,
     list,

@@ -1,5 +1,8 @@
-const { buildChartImage } = require('../../chart/historicalData');
-const { normalizeInstrument } = require('./marketQuotes');
+import historicalData from '../../chart/historicalData';
+import marketQuoteHandlers from './marketQuotes';
+
+const { buildChartImage } = historicalData;
+const { normalizeInstrument } = marketQuoteHandlers;
 
 function getUsage() {
     return (
@@ -12,7 +15,7 @@ function getUsage() {
     );
 }
 
-function parseChartCommand(text) {
+function parseChartCommand(text: string) {
     const parts = text.trim().split(/\s+/);
     if (parts.length < 3) {
         return null;
@@ -29,7 +32,7 @@ function parseChartCommand(text) {
     return { instrument, timeframe };
 }
 
-const chart = async ctx => {
+const chart = async (ctx: any) => {
     const parsed = parseChartCommand(ctx.message.text);
     if (!parsed) {
         return ctx.reply(getUsage());
@@ -39,16 +42,13 @@ const chart = async ctx => {
         await ctx.reply(`Generating chart for ${parsed.instrument} (${parsed.timeframe})...`);
         const image = await buildChartImage(ctx.kite, parsed.instrument, parsed.timeframe);
 
-        return ctx.replyWithPhoto(
-            { source: image.buffer, filename: `${parsed.instrument.replace(':', '_')}_${parsed.timeframe}.png` },
-            { caption: image.caption }
-        );
-    } catch (err) {
+        return ctx.replyWithPhoto({ source: image.buffer, filename: `${parsed.instrument.replace(':', '_')}_${parsed.timeframe}.png` }, { caption: image.caption });
+    } catch (err: any) {
         return ctx.reply(`Error generating chart: ${err.message}`);
     }
 };
 
-module.exports = {
+export = {
     chart,
-    parseChartCommand
+    parseChartCommand,
 };

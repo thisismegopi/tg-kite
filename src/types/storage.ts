@@ -33,3 +33,16 @@ export interface WatchlistRecord {
     instrument: string;
     createdAt: number;
 }
+
+export interface PortfolioSnapshotInput {
+    mfInvested: number;
+    mfCurrent: number;
+    eqInvested: number;
+    eqCurrent: number;
+}
+
+export interface PortfolioSnapshotRecord extends PortfolioSnapshotInput {
+    id: number;
+    telegramUserId: string;
+    createdAt: number;
+}

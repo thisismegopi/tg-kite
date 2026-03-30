@@ -9,6 +9,7 @@ import marketQuoteHandlers from './bot/handlers/marketQuotes';
 import mfHandlers from './bot/handlers/mutualFunds';
 import orderHandlers from './bot/handlers/orders';
 import portfolioHandlers from './bot/handlers/portfolio';
+import portfolioSnapshotHandlers from './bot/handlers/portfolioSnapshot';
 import watchlistHandlers from './bot/handlers/watchlist';
 
 db.init();
@@ -23,6 +24,7 @@ bot.command('login', authHandlers.login);
 bot.command('logout', authHandlers.logout);
 
 bot.command(['holdings', 'portfolio'], authMiddleware.requireAuth, portfolioHandlers.holdings);
+bot.command(['pfsnapshot', 'portfoliosnapshot'], authMiddleware.requireAuth, portfolioSnapshotHandlers.portfolioSnapshot);
 bot.command('positions', authMiddleware.requireAuth, portfolioHandlers.positions);
 bot.command(['balance', 'funds', 'account'], authMiddleware.requireAuth, portfolioHandlers.balance);
 

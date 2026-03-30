@@ -10,7 +10,7 @@ const authMiddleware = async (ctx: any, next: any) => {
     ctx.sessionData = session;
 
     if (session && session.accessToken) {
-        ctx.kite = new (KiteClient as any)(session.accessToken);
+        ctx.kite = new KiteClient(session.accessToken);
     } else {
         ctx.kite = null;
     }

@@ -34,6 +34,7 @@ const help = (ctx: any) => {
 /portfolio - View Holdings (or /holdings)
 /positions - View Net Positions
 /balance - View Funds (or /funds)
+/pfsnapshot - Snapshot MF & equity invested vs current (line chart; max 1 new snapshot / 7 days)
 
 *Trading*
 /buy - Place Buy Order

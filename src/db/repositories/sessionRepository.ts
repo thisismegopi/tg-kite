@@ -1,14 +1,17 @@
 import { eq } from "drizzle-orm";
+import { encryptSessionToken, decryptSessionToken } from "../../crypto/sessionTokenCrypto";
+import { config } from "../../config";
 import { getDb } from "../client";
 import { sessions } from "../schema";
 import type { SessionRecord, StoredSessionInput } from "../../types/storage";
 
 function mapSessionRow(row: typeof sessions.$inferSelect): SessionRecord {
+    const k = config.sessionEncryptionKey;
     return {
         telegramUserId: row.telegramUserId,
-        requestToken: row.requestToken,
-        accessToken: row.accessToken,
-        publicToken: row.publicToken,
+        requestToken: decryptSessionToken(row.requestToken, k),
+        accessToken: decryptSessionToken(row.accessToken, k),
+        publicToken: decryptSessionToken(row.publicToken, k),
         kiteUserId: row.kiteUserId,
         userName: row.userName,
         avatarUrl: row.avatarUrl,
@@ -20,13 +23,14 @@ function mapSessionRow(row: typeof sessions.$inferSelect): SessionRecord {
 export function saveUserSession(dbFile: string, telegramUserId: string | number, sessionData: StoredSessionInput) {
     const { db } = getDb(dbFile);
     const id = String(telegramUserId);
+    const k = config.sessionEncryptionKey;
 
     db.insert(sessions)
         .values({
             telegramUserId: id,
-            requestToken: sessionData.request_token ?? null,
-            accessToken: sessionData.access_token ?? null,
-            publicToken: sessionData.public_token ?? null,
+            requestToken: encryptSessionToken(sessionData.request_token ?? null, k),
+            accessToken: encryptSessionToken(sessionData.access_token ?? null, k),
+            publicToken: encryptSessionToken(sessionData.public_token ?? null, k),
             kiteUserId: sessionData.user_id ?? null,
             userName: sessionData.user_name ?? null,
             avatarUrl: sessionData.avatar_url ?? null,
@@ -36,9 +40,9 @@ export function saveUserSession(dbFile: string, telegramUserId: string | number,
         .onConflictDoUpdate({
             target: sessions.telegramUserId,
             set: {
-                requestToken: sessionData.request_token ?? null,
-                accessToken: sessionData.access_token ?? null,
-                publicToken: sessionData.public_token ?? null,
+                requestToken: encryptSessionToken(sessionData.request_token ?? null, k),
+                accessToken: encryptSessionToken(sessionData.access_token ?? null, k),
+                publicToken: encryptSessionToken(sessionData.public_token ?? null, k),
                 kiteUserId: sessionData.user_id ?? null,
                 userName: sessionData.user_name ?? null,
                 avatarUrl: sessionData.avatar_url ?? null,

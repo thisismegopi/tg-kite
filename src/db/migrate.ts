@@ -43,4 +43,16 @@ export function ensureSchema(dbFile: string) {
         CREATE UNIQUE INDEX IF NOT EXISTS user_watchlist_user_instrument_idx
         ON user_watchlist (telegram_user_id, instrument)
     `);
+
+    db.run(sql`
+        CREATE TABLE IF NOT EXISTS portfolio_snapshot (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_user_id TEXT NOT NULL,
+            mf_invested INTEGER NOT NULL,
+            mf_current INTEGER NOT NULL,
+            eq_invested INTEGER NOT NULL,
+            eq_current INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+        )
+    `);
 }

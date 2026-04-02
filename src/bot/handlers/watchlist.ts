@@ -1,5 +1,6 @@
 import type { QuoteData, QuoteMap } from '../../types/kite';
 
+import { BotContext } from '../../types/bot';
 import db from '../../storage/db';
 import marketQuoteHandlers from './marketQuotes';
 import { renderTableImage } from '../../chart/tableImage';
@@ -92,14 +93,21 @@ function getWatchlistUsage(commandName: string) {
     return `Usage: /${commandName} <instrument> [more_instruments]\n\nExamples:\n/${commandName} INFY\n/${commandName} NSE:INFY, BSE:TCS\n/${commandName} "NIFTY 50"`;
 }
 
-async function add(ctx: any) {
-    const instruments = extractInstruments(ctx.message.text);
-
-    if (instruments.length === 0) {
-        return ctx.reply(getWatchlistUsage('watchadd'));
-    }
-
+async function add(ctx: BotContext) {
     try {
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const instruments = extractInstruments(msg.text);
+
+        if (instruments.length === 0) {
+            return await ctx.reply(getWatchlistUsage('watchadd'));
+        }
+
         const added = db.addWatchlistInstruments(ctx.from.id, instruments);
         const skipped = instruments.length - added;
 
@@ -108,20 +116,26 @@ async function add(ctx: any) {
             message += ` ${skipped} already existed.`;
         }
 
-        return ctx.reply(message);
+        return await ctx.reply(message);
     } catch (err: any) {
-        return ctx.reply(`Error updating watchlist: ${err.message}`);
+        return await ctx.reply(`Error updating watchlist: ${err.message}`);
     }
 }
 
-async function remove(ctx: any) {
-    const instruments = extractInstruments(ctx.message.text);
-
-    if (instruments.length === 0) {
-        return ctx.reply(getWatchlistUsage('watchremove'));
-    }
-
+async function remove(ctx: BotContext) {
     try {
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const instruments = extractInstruments(msg.text);
+
+        if (instruments.length === 0) {
+            return await ctx.reply(getWatchlistUsage('watchremove'));
+        }
         const removed = db.removeWatchlistInstruments(ctx.from.id, instruments);
         const missing = instruments.length - removed;
 
@@ -130,18 +144,21 @@ async function remove(ctx: any) {
             message += ` ${missing} were not present.`;
         }
 
-        return ctx.reply(message);
+        return await ctx.reply(message);
     } catch (err: any) {
-        return ctx.reply(`Error updating watchlist: ${err.message}`);
+        return await ctx.reply(`Error updating watchlist: ${err.message}`);
     }
 }
 
-async function list(ctx: any) {
+async function list(ctx: BotContext) {
     try {
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
         const entries = db.getWatchlistInstruments(ctx.from.id);
 
         if (entries.length === 0) {
-            return ctx.reply('Your watchlist is empty.\n\nUse /watchadd <instrument> to save instruments for quick access.');
+            return await ctx.reply('Your watchlist is empty.\n\nUse /watchadd <instrument> to save instruments for quick access.');
         }
 
         const instruments = entries.map((entry: { instrument: string }) => entry.instrument);
@@ -153,7 +170,7 @@ async function list(ctx: any) {
             let message = '*Your Watchlist*\n\n';
             message += instruments.map(instrument => formatWatchlistItem(instrument, quoteMap[instrument])).join('\n\n');
 
-            return ctx.reply(message, { parse_mode: 'Markdown' });
+            return await ctx.reply(message, { parse_mode: 'Markdown' });
         }
 
         const buffer = await renderTableImage({
@@ -186,9 +203,36 @@ async function list(ctx: any) {
             footerLines: [`Total ${rowsWithData.length} items`],
         });
 
-        return ctx.replyWithPhoto({ source: buffer, filename: 'watchlist.png' }, { caption: 'Watchlist sorted by day gainers to losers' });
+        return await ctx.replyWithPhoto({ source: buffer, filename: 'watchlist.png' }, { caption: 'Watchlist sorted by day gainers to losers' });
     } catch (err: any) {
-        return ctx.reply(`Error loading watchlist: ${err.message}`);
+        return await ctx.reply(`Error loading watchlist: ${err.message}`);
+    }
+}
+
+async function getInstrument(ctx: BotContext) {
+    try {
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const parts = (msg.text ?? '').trim().split(/\s+/);
+        const exchange = parts[1] ? String(parts[1]).toUpperCase() : undefined;
+        await ctx.reply('Fetching instruments CSV from Kite (large file; may take a moment)…');
+        const csv = await ctx.kite.getInstruments(exchange);
+        const buf = Buffer.from(csv, 'utf-8');
+        const suffix = exchange ? `_${exchange}` : '_all';
+        const filename = `instruments${suffix}.csv`;
+        return await ctx.replyWithDocument(
+            { source: buf, filename },
+            {
+                caption: 'Kite instruments master list (CSV). Dump is generated once daily; last_price is not real time.' + (exchange ? ` Exchange filter: ${exchange}.` : ' All exchanges.'),
+            },
+        );
+    } catch (err: any) {
+        return await ctx.reply(`Error fetching instruments: ${err.message}`);
     }
 }
 
@@ -196,4 +240,5 @@ export = {
     add,
     remove,
     list,
+    getInstrument,
 };

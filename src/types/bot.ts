@@ -1,18 +1,12 @@
-import type KiteClient from "../kite/client";
-import type { SessionRecord } from "./storage";
+import { Context } from 'telegraf';
+import type KiteClient from '../kite/client';
+import type { SessionRecord } from './storage';
+import type { Update } from 'telegraf/types';
 
-export interface BotContext {
-    from?: {
-        id: number | string;
-    };
-    message?: {
-        text?: string;
-    };
-    updateType?: string;
+export interface BotContext<U extends Update = Update> extends Context<U> {
     sessionData?: SessionRecord | null;
     kite?: KiteClient | null;
-    reply: (text: string, extra?: unknown) => Promise<unknown> | unknown;
-    replyWithPhoto: (photo: unknown, extra?: unknown) => Promise<unknown> | unknown;
 }
 
-export type NextFn = () => Promise<unknown> | unknown;
+/** Telegraf middleware / composer `next` callback. */
+export type NextFn = () => Promise<void>;

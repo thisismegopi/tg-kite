@@ -1,33 +1,39 @@
-import type { QuoteData, QuoteMap } from "../../types/kite";
+import type { QuoteData, QuoteMap } from '../../types/kite';
+
+import { BotContext } from '../../types/bot';
 
 const formatCurrency = (value: unknown) => {
-    if (typeof value !== "number") return "N/A";
-    return new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    if (typeof value !== 'number') return 'N/A';
+    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 };
 
 function extractInstruments(text: string) {
-    const input = text.trim().replace(/^\/\S+\s*/, "");
+    const input = text.trim().replace(/^\/\S+\s*/, '');
     if (!input) {
         return [] as string[];
     }
 
-    const quotedMatches = [...input.matchAll(/"([^"]+)"|'([^']+)'/g)]
-        .map(match => match[1] || match[2])
-        .filter((token): token is string => Boolean(token));
+    const quotedMatches = [...input.matchAll(/"([^"]+)"|'([^']+)'/g)].map(match => match[1] || match[2]).filter((token): token is string => Boolean(token));
 
     if (quotedMatches.length > 0) {
         return quotedMatches.map(token => normalizeInstrument(token)).filter((token): token is string => Boolean(token));
     }
 
-    if (input.includes(",")) {
-        return input.split(",").map(token => normalizeInstrument(token)).filter((token): token is string => Boolean(token));
+    if (input.includes(',')) {
+        return input
+            .split(',')
+            .map(token => normalizeInstrument(token))
+            .filter((token): token is string => Boolean(token));
     }
 
-    return input.split(/\s+/).map(token => normalizeInstrument(token)).filter((token): token is string => Boolean(token));
+    return input
+        .split(/\s+/)
+        .map(token => normalizeInstrument(token))
+        .filter((token): token is string => Boolean(token));
 }
 
 function normalizeInstrument(token: string) {
-    let decoded = token.trim().replace(/\+/g, " ");
+    let decoded = token.trim().replace(/\+/g, ' ');
     try {
         decoded = decodeURIComponent(decoded);
     } catch {
@@ -37,9 +43,9 @@ function normalizeInstrument(token: string) {
     const cleaned = decoded.toUpperCase();
     if (!cleaned) return null;
 
-    if (cleaned.includes(":")) {
-        const [exchange, ...symbolParts] = cleaned.split(":");
-        const symbol = symbolParts.join(":");
+    if (cleaned.includes(':')) {
+        const [exchange, ...symbolParts] = cleaned.split(':');
+        const symbol = symbolParts.join(':');
         if (!exchange || !symbol) return null;
         return `${exchange}:${symbol}`;
     }
@@ -52,13 +58,7 @@ function getMissingInstruments(requested: string[], responseMap: QuoteMap) {
 }
 
 function getInstrumentUsage(commandName: string) {
-    return (
-        `Usage: /${commandName} <instrument> [more_instruments]\n\n` +
-        "Examples:\n" +
-        `/${commandName} NSE:INFY\n` +
-        `/${commandName} INFY\n` +
-        `/${commandName} NSE:INFY BSE:INFY`
-    );
+    return `Usage: /${commandName} <instrument> [more_instruments]\n\n` + 'Examples:\n' + `/${commandName} NSE:INFY\n` + `/${commandName} INFY\n` + `/${commandName} NSE:INFY BSE:INFY`;
 }
 
 function formatQuoteMessage(instrument: string, quote: QuoteData) {
@@ -67,11 +67,11 @@ function formatQuoteMessage(instrument: string, quote: QuoteData) {
     message += `LTP: ${formatCurrency(quote.last_price)}\n`;
     message += `Open: ${formatCurrency(ohlc.open)} | High: ${formatCurrency(ohlc.high)}\n`;
     message += `Low: ${formatCurrency(ohlc.low)} | Prev Close: ${formatCurrency(ohlc.close)}\n`;
-    message += `Volume: ${quote.volume ?? "N/A"} | Avg Price: ${formatCurrency(quote.average_price)}\n`;
-    message += `Buy Qty: ${quote.buy_quantity ?? "N/A"} | Sell Qty: ${quote.sell_quantity ?? "N/A"}`;
+    message += `Volume: ${quote.volume ?? 'N/A'} | Avg Price: ${formatCurrency(quote.average_price)}\n`;
+    message += `Buy Qty: ${quote.buy_quantity ?? 'N/A'} | Sell Qty: ${quote.sell_quantity ?? 'N/A'}`;
 
-    if (typeof quote.net_change === "number") {
-        const sign = quote.net_change >= 0 ? "+" : "";
+    if (typeof quote.net_change === 'number') {
+        const sign = quote.net_change >= 0 ? '+' : '';
         message += `\nNet Change: ${sign}${formatCurrency(quote.net_change)}`;
     }
 
@@ -94,66 +94,87 @@ function formatLtpMessage(instrument: string, quote: QuoteData) {
     return `*${instrument}*\nLTP: ${formatCurrency(quote.last_price)}`;
 }
 
-async function replyForQuotes(ctx: any, title: string, requestedInstruments: string[], responseMap: QuoteMap, formatter: (instrument: string, quote: QuoteData) => string) {
+async function replyForQuotes(ctx: BotContext, title: string, requestedInstruments: string[], responseMap: QuoteMap, formatter: (instrument: string, quote: QuoteData) => string) {
     const available = requestedInstruments.filter(instrument => responseMap[instrument]);
     const missing = getMissingInstruments(requestedInstruments, responseMap);
 
     if (available.length === 0) {
-        return ctx.reply("No market data found for the requested instrument(s).");
+        return await ctx.reply('No market data found for the requested instrument(s).');
     }
 
     let message = `*${title}*\n\n`;
-    message += available.map(instrument => formatter(instrument, responseMap[instrument]!)).join("\n\n");
+    message += available.map(instrument => formatter(instrument, responseMap[instrument]!)).join('\n\n');
 
     if (missing.length > 0) {
-        message += `\n\n_Missing data for: ${missing.join(", ")}_`;
+        message += `\n\n_Missing data for: ${missing.join(', ')}_`;
     }
 
-    return ctx.reply(message, { parse_mode: "Markdown" });
+    return await ctx.reply(message, { parse_mode: 'Markdown' });
 }
 
-const quote = async (ctx: any) => {
-    const instruments = extractInstruments(ctx.message.text);
-    if (instruments.length === 0) {
-        return ctx.reply(getInstrumentUsage("quote"));
-    }
-
+const quote = async (ctx: BotContext) => {
     try {
-        await ctx.reply("Fetching market quote...");
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const instruments = extractInstruments(msg.text);
+        if (instruments.length === 0) {
+            return ctx.reply(getInstrumentUsage('quote'));
+        }
+
+        await ctx.reply('Fetching market quote...');
         const response = await ctx.kite.getQuote(instruments);
-        return replyForQuotes(ctx, "Market Quote", instruments, response || {}, formatQuoteMessage);
+        return await replyForQuotes(ctx, 'Market Quote', instruments, response || {}, formatQuoteMessage);
     } catch (err: any) {
-        return ctx.reply(`Error fetching quote: ${err.message}`);
+        return await ctx.reply(`Error fetching quote: ${err.message}`);
     }
 };
 
-const ohlc = async (ctx: any) => {
-    const instruments = extractInstruments(ctx.message.text);
-    if (instruments.length === 0) {
-        return ctx.reply(getInstrumentUsage("ohlc"));
-    }
-
+const ohlc = async (ctx: BotContext) => {
     try {
-        await ctx.reply("Fetching OHLC...");
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const instruments = extractInstruments(msg.text);
+        if (instruments.length === 0) {
+            return await ctx.reply(getInstrumentUsage('ohlc'));
+        }
+
+        await ctx.reply('Fetching OHLC...');
         const response = await ctx.kite.getOhlc(instruments);
-        return replyForQuotes(ctx, "OHLC", instruments, response || {}, formatOhlcMessage);
+        return await replyForQuotes(ctx, 'OHLC', instruments, response || {}, formatOhlcMessage);
     } catch (err: any) {
-        return ctx.reply(`Error fetching OHLC: ${err.message}`);
+        return await ctx.reply(`Error fetching OHLC: ${err.message}`);
     }
 };
 
-const ltp = async (ctx: any) => {
-    const instruments = extractInstruments(ctx.message.text);
-    if (instruments.length === 0) {
-        return ctx.reply(getInstrumentUsage("ltp"));
-    }
-
+const ltp = async (ctx: BotContext) => {
     try {
-        await ctx.reply("Fetching LTP...");
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const instruments = extractInstruments(msg.text);
+        if (instruments.length === 0) {
+            return await ctx.reply(getInstrumentUsage('ltp'));
+        }
+
+        await ctx.reply('Fetching LTP...');
         const response = await ctx.kite.getLtp(instruments);
-        return replyForQuotes(ctx, "LTP", instruments, response || {}, formatLtpMessage);
+        return await replyForQuotes(ctx, 'LTP', instruments, response || {}, formatLtpMessage);
     } catch (err: any) {
-        return ctx.reply(`Error fetching LTP: ${err.message}`);
+        return await ctx.reply(`Error fetching LTP: ${err.message}`);
     }
 };
 

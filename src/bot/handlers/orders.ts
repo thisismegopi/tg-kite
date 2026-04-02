@@ -1,45 +1,47 @@
-import type { OrderRecord, PlaceOrderParams, PlaceOrderResponse } from "../../types/kite";
+import type { OrderRecord, PlaceOrderParams, PlaceOrderResponse } from '../../types/kite';
 
-type ParsedOrderParams = Omit<PlaceOrderParams, "variety">;
+import { BotContext } from '../../types/bot';
+
+type ParsedOrderParams = Omit<PlaceOrderParams, 'variety'>;
 
 const parseOrderCommand = (text: string): ParsedOrderParams | null => {
-    const parts = text.split(" ").filter(part => part.trim() !== "");
+    const parts = text.split(' ').filter(part => part.trim() !== '');
     if (parts.length < 3) return null;
 
-    const side = parts[0].replace("/", "").toUpperCase();
+    const side = parts[0].replace('/', '').toUpperCase();
     const symbol = parts[1].toUpperCase();
     const quantity = parseInt(parts[2], 10);
 
     if (Number.isNaN(quantity)) {
-        throw new Error("Quantity must be a number");
+        throw new Error('Quantity must be a number');
     }
 
-    let order_type = "MARKET";
+    let order_type = 'MARKET';
     let price = 0;
-    let product = "CNC";
+    let product = 'CNC';
     let trigger_price = 0;
 
     for (let i = 3; i < parts.length; i += 1) {
         const arg = parts[i].toUpperCase();
 
-        if (["MARKET", "LIMIT", "SL", "SL-M"].includes(arg)) {
+        if (['MARKET', 'LIMIT', 'SL', 'SL-M'].includes(arg)) {
             order_type = arg;
-        } else if (["MIS", "CNC", "NRML", "CO", "BO"].includes(arg)) {
+        } else if (['MIS', 'CNC', 'NRML', 'CO', 'BO'].includes(arg)) {
             product = arg;
         } else if (!Number.isNaN(parseFloat(arg))) {
             price = parseFloat(arg);
         }
     }
 
-    if (order_type === "LIMIT" && price === 0) {
-        throw new Error("For LIMIT orders, you must specify a price.");
+    if (order_type === 'LIMIT' && price === 0) {
+        throw new Error('For LIMIT orders, you must specify a price.');
     }
 
-    let exchange = "NSE";
+    let exchange = 'NSE';
     let tradingsymbol = symbol;
 
-    if (symbol.includes(":")) {
-        [exchange, tradingsymbol] = symbol.split(":");
+    if (symbol.includes(':')) {
+        [exchange, tradingsymbol] = symbol.split(':');
     }
 
     return {
@@ -51,21 +53,28 @@ const parseOrderCommand = (text: string): ParsedOrderParams | null => {
         product,
         price,
         trigger_price,
-        validity: "DAY",
+        validity: 'DAY',
     };
 };
 
-const placeOrder = async (ctx: any) => {
+const placeOrder = async (ctx: BotContext) => {
     try {
-        const params = parseOrderCommand(ctx.message.text);
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const params = parseOrderCommand(msg.text);
         if (!params) {
-            return ctx.reply("⚠️ Usage: /buy <SYMBOL> <QTY> [MARKET/LIMIT] [PRICE] [CNC/MIS]");
+            return await ctx.reply('⚠️ Usage: /buy <SYMBOL> <QTY> [MARKET/LIMIT] [PRICE] [CNC/MIS]');
         }
 
-        ctx.reply(`⏳ Placing ${params.transaction_type} order for ${params.quantity} ${params.tradingsymbol}...`);
+        await ctx.reply(`⏳ Placing ${params.transaction_type} order for ${params.quantity} ${params.tradingsymbol}...`);
 
-        const response = await ctx.kite.placeOrder({
-            variety: "regular",
+        const response = (await ctx.kite.placeOrder({
+            variety: 'regular',
             exchange: params.exchange,
             tradingsymbol: params.tradingsymbol,
             transaction_type: params.transaction_type,
@@ -75,19 +84,22 @@ const placeOrder = async (ctx: any) => {
             price: params.price,
             validity: params.validity,
             trigger_price: params.trigger_price,
-        }) as PlaceOrderResponse;
+        })) as PlaceOrderResponse;
 
-        ctx.reply(`✅ Order Placed!\nOrder ID: \`${response.order_id}\``, { parse_mode: "Markdown" });
+        return await ctx.reply(`✅ Order Placed!\nOrder ID: \`${response.order_id}\``, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Order Failed: ${err.message}`);
+        return await ctx.reply(`❌ Order Failed: ${err.message}`);
     }
 };
 
-const listOrders = async (ctx: any) => {
+const listOrders = async (ctx: BotContext) => {
     try {
-        const orders = await ctx.kite.getOrders() as OrderRecord[];
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const orders = (await ctx.kite.getOrders()) as OrderRecord[];
         if (!orders || orders.length === 0) {
-            return ctx.reply("No orders found for today.");
+            return await ctx.reply('No orders found for today.');
         }
 
         const recent = orders.slice(0, 5);
@@ -96,27 +108,33 @@ const listOrders = async (ctx: any) => {
         recent.forEach(order => {
             message += `🆔 \`${order.order_id}\`\n`;
             message += `${order.transaction_type} ${order.tradingsymbol} x ${order.quantity}\n`;
-            message += `Status: *${order.status}* | Price: ${order.price || "MKT"}\n\n`;
+            message += `Status: *${order.status}* | Price: ${order.price || 'MKT'}\n\n`;
         });
 
-        ctx.reply(message, { parse_mode: "Markdown" });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching orders: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching orders: ${err.message}`);
     }
 };
 
-const orderStatus = async (ctx: any) => {
-    const parts = ctx.message.text.split(" ");
-    const orderId = parts[1];
-
-    if (!orderId) {
-        return ctx.reply("⚠️ Usage: /orderstatus <order_id>");
-    }
-
+const orderStatus = async (ctx: BotContext) => {
     try {
-        const history = await ctx.kite.getOrderHistory(orderId) as OrderRecord[];
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const parts = msg.text.split(' ');
+        const orderId = parts[1];
+
+        if (!orderId) {
+            return await ctx.reply('⚠️ Usage: /orderstatus <order_id>');
+        }
+        const history = (await ctx.kite.getOrderHistory(orderId)) as OrderRecord[];
         if (!history || history.length === 0) {
-            return ctx.reply("Order not found.");
+            return await ctx.reply('Order not found.');
         }
 
         const current = history[history.length - 1];
@@ -128,9 +146,9 @@ const orderStatus = async (ctx: any) => {
         if (current.average_price) message += `Avg Price: ${current.average_price}\n`;
         if (current.status_message) message += `Msg: ${current.status_message}\n`;
 
-        ctx.reply(message, { parse_mode: "Markdown" });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching status: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching status: ${err.message}`);
     }
 };
 

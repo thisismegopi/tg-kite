@@ -1,4 +1,5 @@
 import { renderTableImage, type TableRow } from '../../chart/tableImage';
+import { BotContext, NextFn } from '../../types/bot';
 import type { HoldingRecord, MarginsResponse, PositionRecord, PositionsResponse } from '../../types/kite';
 
 const formatCurrency = (value: number) => {
@@ -17,9 +18,12 @@ const holdingMetrics = (holding: HoldingRecord) => {
     return { holding, investedValue, currentValue, pnl, pnlPercent };
 };
 
-const holdings = async (ctx: any) => {
+const holdings = async (ctx: BotContext) => {
     try {
-        ctx.reply('Fetching holdings...');
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        await ctx.reply('Fetching holdings...');
         const response = (await ctx.kite.getHoldings()) as HoldingRecord[];
 
         if (!response || response.length === 0) {
@@ -72,20 +76,23 @@ const holdings = async (ctx: any) => {
             ],
         });
 
-        return ctx.replyWithPhoto({ source: buffer, filename: 'holdings.png' }, { caption: 'Portfolio holdings snapshot' });
+        return await ctx.replyWithPhoto({ source: buffer, filename: 'holdings.png' }, { caption: 'Portfolio holdings snapshot' });
     } catch (err: any) {
-        ctx.reply(`Error fetching holdings: ${err.message}`);
+        return await ctx.reply(`Error fetching holdings: ${err.message}`);
     }
 };
 
-const positions = async (ctx: any) => {
+const positions = async (ctx: BotContext) => {
     try {
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
         ctx.reply('Fetching positions...');
         const response = (await ctx.kite.getPositions()) as PositionsResponse;
         const net = response.net;
 
         if (!net || net.length === 0) {
-            return ctx.reply('No open positions.');
+            return await ctx.reply('No open positions.');
         }
 
         let message = '📊 *Net Positions*\n\n';
@@ -99,14 +106,17 @@ const positions = async (ctx: any) => {
             message += `P&L: ${emoji} ${formatCurrency(pnl)}\n\n`;
         });
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching positions: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching positions: ${err.message}`);
     }
 };
 
-const balance = async (ctx: any) => {
+const balance = async (ctx: BotContext) => {
     try {
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
         const margins = (await ctx.kite.getMargins()) as MarginsResponse;
         const eq = margins.equity;
         const cm = margins.commodity;
@@ -126,9 +136,9 @@ const balance = async (ctx: any) => {
             message += `Net: ${formatCurrency(cm.net)}\n`;
         }
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching balance: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching balance: ${err.message}`);
     }
 };
 

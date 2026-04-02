@@ -2,6 +2,7 @@ import type { MfHoldingRecord, MfInstrumentRecord, MfOrderRecord, MfSipRecord } 
 
 import mfCache from '../../storage/mfCache';
 import { renderTableImage, type TableRow } from '../../chart/tableImage';
+import { BotContext } from '../../types/bot';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
@@ -29,13 +30,16 @@ const mfHoldingMetrics = (holding: MfHoldingRecord) => {
     return { holding, investedValue, currentValue, pnl, pnlPercent };
 };
 
-const mfHoldings = async (ctx: any) => {
+const mfHoldings = async (ctx: BotContext) => {
     try {
-        ctx.reply('📥 Fetching mutual fund holdings...');
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        await ctx.reply('📥 Fetching mutual fund holdings...');
         const holdings = (await ctx.kite.getMfHoldings()) as MfHoldingRecord[];
 
         if (!holdings || holdings.length === 0) {
-            return ctx.reply('📭 You have no mutual fund holdings currently.');
+            return await ctx.reply('📭 You have no mutual fund holdings currently.');
         }
 
         const sorted = holdings.map(mfHoldingMetrics).sort((a, b) => b.pnlPercent - a.pnlPercent);
@@ -86,19 +90,22 @@ const mfHoldings = async (ctx: any) => {
             ],
         });
 
-        return ctx.replyWithPhoto({ source: buffer, filename: 'mf_holdings.png' }, { caption: 'Mutual fund holdings snapshot' });
+        return await ctx.replyWithPhoto({ source: buffer, filename: 'mf_holdings.png' }, { caption: 'Mutual fund holdings snapshot' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching MF holdings: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching MF holdings: ${err.message}`);
     }
 };
 
-const mfOrders = async (ctx: any) => {
+const mfOrders = async (ctx: BotContext) => {
     try {
-        ctx.reply('📮 Fetching mutual fund orders...');
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        await ctx.reply('📮 Fetching mutual fund orders...');
         const orders = (await ctx.kite.getMfOrders()) as MfOrderRecord[];
 
         if (!orders || orders.length === 0) {
-            return ctx.reply('📭 No mutual fund orders found in the last 7 days.');
+            return await ctx.reply('📭 No mutual fund orders found in the last 7 days.');
         }
 
         const recent = orders.slice(0, 5);
@@ -122,26 +129,33 @@ const mfOrders = async (ctx: any) => {
             message += `\n_Showing 5 of ${orders.length} orders_`;
         }
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching MF orders: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching MF orders: ${err.message}`);
     }
 };
 
-const mfOrder = async (ctx: any) => {
-    const parts = ctx.message.text.split(' ');
-    const orderId = parts[1];
-
-    if (!orderId) {
-        return ctx.reply('⚠️ Usage: /mforder <order_id>\n\nExample: /mforder 271989e0-a64e-4cf3-b4e4-afb8f38dd203');
-    }
-
+const mfOrder = async (ctx: BotContext) => {
     try {
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const parts = msg.text.split(' ');
+        const orderId = parts[1];
+
+        if (!orderId) {
+            return await ctx.reply('⚠️ Usage: /mforder <order_id>\n\nExample: /mforder 271989e0-a64e-4cf3-b4e4-afb8f38dd203');
+        }
+
         ctx.reply('🔍 Fetching order details...');
         const order = (await ctx.kite.getMfOrder(orderId)) as MfOrderRecord;
 
         if (!order) {
-            return ctx.reply('❌ Order not found.');
+            return await ctx.reply('❌ Order not found.');
         }
 
         let message = '🧾 *MF Order Details*\n\n';
@@ -162,19 +176,22 @@ const mfOrder = async (ctx: any) => {
             message += `🧾 Folio: \`${order.folio}\`\n`;
         }
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching order details: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching order details: ${err.message}`);
     }
 };
 
-const mfSips = async (ctx: any) => {
+const mfSips = async (ctx: BotContext) => {
     try {
-        ctx.reply('📅 Fetching SIP orders...');
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        await ctx.reply('📅 Fetching SIP orders...');
         const sips = (await ctx.kite.getMfSips()) as MfSipRecord[];
 
         if (!sips || sips.length === 0) {
-            return ctx.reply('📭 No active SIPs found.');
+            return await ctx.reply('📭 No active SIPs found.');
         }
 
         let message = '🎯 *SIP Orders*\n\n';
@@ -195,35 +212,42 @@ const mfSips = async (ctx: any) => {
             message += '\n';
         });
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error fetching SIPs: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching SIPs: ${err.message}`);
     }
 };
 
-const mfInstruments = async (ctx: any) => {
-    const parts = ctx.message.text.split(' ');
-    const searchTerm = parts.slice(1).join(' ').trim();
-
-    if (!searchTerm) {
-        return ctx.reply(
-            '🔍 *Search Mutual Funds*\n\n' +
-                'Usage: /mfinstruments <search term>\n\n' +
-                'Examples:\n' +
-                '• /mfinstruments hdfc balanced\n' +
-                '• /mfinstruments axis bluechip\n' +
-                '• /mfinstruments kotak flexi\n\n' +
-                '_This searches fund names, AMCs, and scheme codes._',
-            { parse_mode: 'Markdown' },
-        );
-    }
-
+const mfInstruments = async (ctx: BotContext) => {
     try {
-        ctx.reply('🔎 Searching mutual funds...');
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const parts = msg.text.split(' ');
+        const searchTerm = parts.slice(1).join(' ').trim();
+
+        if (!searchTerm) {
+            return await ctx.reply(
+                '🔍 *Search Mutual Funds*\n\n' +
+                    'Usage: /mfinstruments <search term>\n\n' +
+                    'Examples:\n' +
+                    '• /mfinstruments hdfc balanced\n' +
+                    '• /mfinstruments axis bluechip\n' +
+                    '• /mfinstruments kotak flexi\n\n' +
+                    '_This searches fund names, AMCs, and scheme codes._',
+                { parse_mode: 'Markdown' },
+            );
+        }
+
+        await ctx.reply('🔎 Searching mutual funds...');
         const results = (await mfCache.searchInstruments(ctx.kite, searchTerm, 10)) as MfInstrumentRecord[];
 
         if (!results || results.length === 0) {
-            return ctx.reply(`🔍 No mutual funds found matching "${searchTerm}".`);
+            return await ctx.reply(`🔍 No mutual funds found matching "${searchTerm}".`);
         }
 
         let message = `🔎 *MF Search Results for "${searchTerm}"*\n\n`;
@@ -242,9 +266,9 @@ const mfInstruments = async (ctx: any) => {
         const cacheStats = mfCache.getCacheStats();
         message += `_Showing ${results.length} of ${cacheStats.instrumentCount} cached funds_`;
 
-        ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (err: any) {
-        ctx.reply(`❌ Error searching instruments: ${err.message}`);
+        return await ctx.reply(`❌ Error searching instruments: ${err.message}`);
     }
 };
 

@@ -1,5 +1,6 @@
 import type { AiAnalysisResult, PortfolioSummary } from '../../types/kite';
 
+import { BotContext } from '../../types/bot';
 import db from '../../storage/db';
 import geminiClient from '../../ai/geminiClient';
 import portfolioAnalyzer from '../../ai/portfolioAnalyzer';
@@ -120,39 +121,46 @@ Each AI query uses 1 credit.
 New users receive ${db.DEFAULT_AI_CREDITS} free credits.`;
 }
 
-const analyze = async (ctx: any) => {
-    const userId = ctx.from.id;
-    const gemini = getGeminiClient();
-
-    if (!gemini.isEnabled()) {
-        return ctx.reply('*AI Analysis Unavailable*\n\nThe Gemini API key is not configured. Please add `GEMINI_API_KEY` to your environment variables.', { parse_mode: 'Markdown' });
-    }
-
-    const commandText = ctx.message.text;
-    const firstSpaceIdx = commandText.indexOf(' ');
-    const argsText = firstSpaceIdx > 0 ? commandText.slice(firstSpaceIdx + 1).trim() : '';
-
-    if (argsText.toLowerCase() === 'help') {
-        return ctx.reply(getHelpMessage(), { parse_mode: 'Markdown' });
-    }
-
-    if (argsText.toLowerCase() === 'credits') {
-        const creditInfo = db.getAiCredits(userId);
-        return ctx.reply(formatCreditsMessage(creditInfo), { parse_mode: 'Markdown' });
-    }
-
-    const creditInfo = db.getAiCredits(userId);
-    if (creditInfo.credits <= 0) {
-        return ctx.reply(`*No Credits Remaining*\n\nYou've used all your AI credits.\nTotal analyses done: ${creditInfo.totalUsed}`, { parse_mode: 'Markdown' });
-    }
-
+const analyze = async (ctx: BotContext) => {
     try {
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const userId = ctx.from.id;
+        const gemini = getGeminiClient();
+
+        if (!gemini.isEnabled()) {
+            return ctx.reply('*AI Analysis Unavailable*\n\nThe Gemini API key is not configured. Please add `GEMINI_API_KEY` to your environment variables.', { parse_mode: 'Markdown' });
+        }
+
+        const commandText = msg.text;
+        const firstSpaceIdx = commandText.indexOf(' ');
+        const argsText = firstSpaceIdx > 0 ? commandText.slice(firstSpaceIdx + 1).trim() : '';
+
+        if (argsText.toLowerCase() === 'help') {
+            return await ctx.reply(getHelpMessage(), { parse_mode: 'Markdown' });
+        }
+
+        if (argsText.toLowerCase() === 'credits') {
+            const creditInfo = db.getAiCredits(userId);
+            return await ctx.reply(formatCreditsMessage(creditInfo), { parse_mode: 'Markdown' });
+        }
+
+        const creditInfo = db.getAiCredits(userId);
+        if (creditInfo.credits <= 0) {
+            return await ctx.reply(`*No Credits Remaining*\n\nYou've used all your AI credits.\nTotal analyses done: ${creditInfo.totalUsed}`, { parse_mode: 'Markdown' });
+        }
+
         if (isCustomQuestion(argsText)) {
             await ctx.reply('Thinking about your question...');
             const result = await askPortfolioQuestion(ctx.kite, argsText);
 
             if (result.isEmpty) {
-                return ctx.reply('*No Holdings Found*\n\nAdd some investments first to ask questions about your portfolio.', { parse_mode: 'Markdown' });
+                return await ctx.reply('*No Holdings Found*\n\nAdd some investments first to ask questions about your portfolio.', { parse_mode: 'Markdown' });
             }
 
             db.consumeAiCredit(userId);
@@ -169,7 +177,7 @@ const analyze = async (ctx: any) => {
             const result = await analyzePortfolio(ctx.kite, isDetailed ? 'detailed' : 'brief');
 
             if (result.isEmpty) {
-                return ctx.reply('*No Holdings Found*\n\nAdd some equity or mutual fund investments to get AI-powered analysis.', { parse_mode: 'Markdown' });
+                return await ctx.reply('*No Holdings Found*\n\nAdd some equity or mutual fund investments to get AI-powered analysis.', { parse_mode: 'Markdown' });
             }
 
             db.consumeAiCredit(userId);
@@ -181,16 +189,16 @@ const analyze = async (ctx: any) => {
                     await ctx.reply(message, { parse_mode: 'Markdown' });
                 }
             } else {
-                await ctx.reply(formatBriefAnalysis(result as { portfolioSummary: PortfolioSummary; analysis: AiAnalysisResult }), { parse_mode: 'Markdown' });
+                return await ctx.reply(formatBriefAnalysis(result as { portfolioSummary: PortfolioSummary; analysis: AiAnalysisResult }), { parse_mode: 'Markdown' });
             }
 
             if (remaining.credits <= 3) {
-                await ctx.reply(`${remaining.credits} AI credits remaining`, { parse_mode: 'Markdown' });
+                return await ctx.reply(`${remaining.credits} AI credits remaining`, { parse_mode: 'Markdown' });
             }
         }
     } catch (err: any) {
         console.error('AI analysis error:', err);
-        await ctx.reply(`*Analysis Failed*\n\n${err.message}`, { parse_mode: 'Markdown' });
+        return await ctx.reply(`*Analysis Failed*\n\n${err.message}`, { parse_mode: 'Markdown' });
     }
 };
 

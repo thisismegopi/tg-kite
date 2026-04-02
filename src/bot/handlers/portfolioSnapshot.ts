@@ -1,6 +1,7 @@
-import portfolioAnalyzer from "../../ai/portfolioAnalyzer";
-import { renderPortfolioSnapshotLineChart } from "../../chart/portfolioSnapshotChart";
-import db from "../../storage/db";
+import { BotContext } from '../../types/bot';
+import db from '../../storage/db';
+import portfolioAnalyzer from '../../ai/portfolioAnalyzer';
+import { renderPortfolioSnapshotLineChart } from '../../chart/portfolioSnapshotChart';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -15,13 +16,16 @@ function snapshotTotalsFromAggregated(aggregated: Awaited<ReturnType<typeof port
     };
 }
 
-const portfolioSnapshot = async (ctx: any) => {
+const portfolioSnapshot = async (ctx: BotContext) => {
     try {
-        await ctx.reply("Fetching portfolio and building chart…");
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        await ctx.reply('Fetching portfolio and building chart…');
 
         const aggregated = await portfolioAnalyzer.aggregatePortfolio(ctx.kite);
         if (aggregated.portfolio_summary.holdings_count === 0) {
-            return ctx.reply("No equity or mutual fund holdings found. Nothing to snapshot.");
+            return ctx.reply('No equity or mutual fund holdings found. Nothing to snapshot.');
         }
 
         const userId = ctx.from.id;
@@ -33,7 +37,7 @@ const portfolioSnapshot = async (ctx: any) => {
         if (canCreate) {
             const totals = snapshotTotalsFromAggregated(aggregated);
             db.insertPortfolioSnapshot(userId, totals);
-            captionExtra = "New snapshot saved.";
+            captionExtra = 'New snapshot saved.';
         } else {
             const nextAt = new Date(last!.createdAt + SEVEN_DAYS_MS);
             captionExtra = `Next new snapshot after ${nextAt.toLocaleString()} (one per 7 days). Showing history.`;
@@ -42,10 +46,10 @@ const portfolioSnapshot = async (ctx: any) => {
         const rows = db.listPortfolioSnapshotsForChart(userId);
         const { buffer, caption } = await renderPortfolioSnapshotLineChart(rows);
 
-        await ctx.replyWithPhoto({ source: buffer }, { caption: `${captionExtra}\n${caption}` });
+        return await ctx.replyWithPhoto({ source: buffer }, { caption: `${captionExtra}\n${caption}` });
     } catch (err: any) {
-        console.error("portfolioSnapshot error", err);
-        return ctx.reply(`Error: ${err.message ?? err}`);
+        console.error('portfolioSnapshot error', err);
+        return await ctx.reply(`Error: ${err.message ?? err}`);
     }
 };
 

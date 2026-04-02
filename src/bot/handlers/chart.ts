@@ -1,3 +1,4 @@
+import { BotContext } from '../../types/bot';
 import historicalData from '../../chart/historicalData';
 import marketQuoteHandlers from './marketQuotes';
 
@@ -32,19 +33,26 @@ function parseChartCommand(text: string) {
     return { instrument, timeframe };
 }
 
-const chart = async (ctx: any) => {
-    const parsed = parseChartCommand(ctx.message.text);
-    if (!parsed) {
-        return ctx.reply(getUsage());
-    }
-
+const chart = async (ctx: BotContext) => {
     try {
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const msg = ctx.message;
+        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+            throw Error('Kite instance not found');
+        }
+        const parsed = parseChartCommand(msg.text);
+        if (!parsed) {
+            return await ctx.reply(getUsage());
+        }
+
         await ctx.reply(`Generating chart for ${parsed.instrument} (${parsed.timeframe})...`);
         const image = await buildChartImage(ctx.kite, parsed.instrument, parsed.timeframe);
 
-        return ctx.replyWithPhoto({ source: image.buffer, filename: `${parsed.instrument.replace(':', '_')}_${parsed.timeframe}.png` }, { caption: image.caption });
+        return await ctx.replyWithPhoto({ source: image.buffer, filename: `${parsed.instrument.replace(':', '_')}_${parsed.timeframe}.png` }, { caption: image.caption });
     } catch (err: any) {
-        return ctx.reply(`Error generating chart: ${err.message}`);
+        return await ctx.reply(`Error generating chart: ${err.message}`);
     }
 };
 

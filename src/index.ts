@@ -1,3 +1,4 @@
+import { BotContext } from './types/bot';
 import { Telegraf } from 'telegraf';
 import analyzeHandlers from './bot/handlers/analyze';
 import authHandlers from './bot/handlers/auth';
@@ -14,7 +15,7 @@ import watchlistHandlers from './bot/handlers/watchlist';
 
 db.init();
 
-const bot = new Telegraf(config.telegramBotToken);
+const bot = new Telegraf<BotContext>(config.telegramBotToken);
 
 bot.use(authMiddleware.authMiddleware);
 
@@ -38,6 +39,8 @@ bot.command('chart', authMiddleware.requireAuth, chartHandlers.chart);
 bot.command('watchadd', authMiddleware.requireAuth, watchlistHandlers.add);
 bot.command('watchremove', authMiddleware.requireAuth, watchlistHandlers.remove);
 bot.command('watchlist', authMiddleware.requireAuth, watchlistHandlers.list);
+
+bot.command('instruments', authMiddleware.requireAuth, watchlistHandlers.getInstrument);
 
 bot.command(['mfholdings', 'mutualfunds'], authMiddleware.requireAuth, mfHandlers.mfHoldings);
 bot.command('mforders', authMiddleware.requireAuth, mfHandlers.mfOrders);

@@ -1,9 +1,11 @@
+import { BotContext, NextFn } from '../../types/bot';
+
 import KiteClient from '../../kite/client';
 import db from '../../storage/db';
 
 const baseClient = new KiteClient();
 
-const start = (ctx: any) => {
+const start = (ctx: BotContext) => {
     ctx.reply(
         `✨ *Welcome to the Kite Trading Bot!*
 
@@ -20,7 +22,7 @@ Note: This is open source bot. You can find the source code on [GitHub](https://
     );
 };
 
-const help = (ctx: any) => {
+const help = (ctx: BotContext) => {
     ctx.reply(
         `✨ *Available Commands*
 
@@ -51,6 +53,7 @@ const help = (ctx: any) => {
 /watchadd <instrument> - Add to watchlist
 /watchremove <instrument> - Remove from watchlist
 /watchlist - View watchlist image sorted by gainers
+/instruments [EXCHANGE] - Kite master instruments list as CSV file (optional: NSE, BSE, NFO, …)
 
 *Mutual Funds*
 /mfholdings - View MF Holdings
@@ -71,7 +74,7 @@ const help = (ctx: any) => {
     );
 };
 
-const login = (ctx: any) => {
+const login = (ctx: BotContext) => {
     const loginUrl = baseClient.generateLoginUrl();
     ctx.reply(
         `🔗 *Kite Login*
@@ -87,13 +90,30 @@ After logging in, you will be redirected to a URL that looks like:
     );
 };
 
-const handleMessage = async (ctx: any, next: any) => {
-    if (ctx.message.text && ctx.message.text.startsWith('/')) {
-        return next();
+function errorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
+
+const handleMessage = async (ctx: BotContext, next: NextFn) => {
+    const msg = ctx.message;
+    if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
+        await next();
+        return;
     }
 
-    const text = ctx.message.text.trim();
+    if (msg.text.startsWith('/')) {
+        await next();
+        return;
+    }
+
+    const text = msg.text.trim();
     if (text.length === 32 && !ctx.kite) {
+        const from = ctx.from;
+        if (!from) {
+            await next();
+            return;
+        }
+
         try {
             await ctx.reply('🔄 Verifying token...');
             const sessionResponse = await baseClient.generateSession(text);
@@ -107,23 +127,30 @@ const handleMessage = async (ctx: any, next: any) => {
                 login_time: sessionResponse.login_time,
             };
 
-            db.saveUserSession(ctx.from.id, sessionData);
+            db.saveUserSession(from.id, sessionData);
             ctx.kite = new KiteClient(sessionData.access_token);
 
-            return ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, { parse_mode: 'Markdown' });
-        } catch (err: any) {
+            await ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, { parse_mode: 'Markdown' });
+            return;
+        } catch (err: unknown) {
             console.error('Login error:', err);
-            return ctx.reply(`❌ *Login Failed*\n\nError: ${err.message}\n\nThe token might be expired or invalid. Please run /login again.`, { parse_mode: 'Markdown' });
+            await ctx.reply(`❌ *Login Failed*\n\nError: ${errorMessage(err)}\n\nThe token might be expired or invalid. Please run /login again.`, { parse_mode: 'Markdown' });
+            return;
         }
     }
 
-    return next();
+    await next();
 };
 
-const logout = (ctx: any) => {
-    db.deleteUserSession(ctx.from.id);
+const logout = async (ctx: BotContext) => {
+    const from = ctx.from;
+    if (!from) {
+        await ctx.reply('Could not resolve your Telegram user. Try again from a private chat.');
+        return;
+    }
+    db.deleteUserSession(from.id);
     ctx.kite = null;
-    ctx.reply('👋 You have been logged out.');
+    await ctx.reply('👋 You have been logged out.');
 };
 
 export = {

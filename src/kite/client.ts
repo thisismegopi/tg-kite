@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import crypto from 'crypto';
 import qs from 'querystring';
+import { gunzipSync } from 'zlib';
 import { config } from '../config';
 import type { HistoricalDataOptions, HistoricalDataResponse, KiteApiEnvelope, KiteApiError, KiteSessionResponse, PlaceOrderParams, QuoteMap } from '../types/kite';
 
@@ -147,6 +148,24 @@ class KiteClient {
         const endpoint = `/instruments/historical/${instrumentToken}/${interval}?${params.toString()}`;
         const response = (await this.client.get(endpoint)) as KiteApiEnvelope<HistoricalDataResponse>;
         return response.data;
+    }
+
+    /**
+     * Full tradable instruments dump as CSV (Kite gzips the response; decoded here).
+     * @see https://kite.trade/docs/connect/v3/market-quotes/#instruments
+     * @param exchange Optional exchange segment, e.g. NSE — maps to GET /instruments/:exchange
+     */
+    async getInstruments(exchange?: string): Promise<string> {
+        const path = exchange ? `/instruments/${encodeURIComponent(exchange)}` : '/instruments';
+        const data = (await this.client.get(path, {
+            responseType: 'arraybuffer',
+        })) as unknown as ArrayBuffer;
+
+        let buf = Buffer.from(data);
+        if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+            buf = gunzipSync(buf);
+        }
+        return buf.toString('utf-8');
     }
 
     async getMfHoldings() {

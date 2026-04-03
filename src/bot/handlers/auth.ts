@@ -15,9 +15,7 @@ I can help you manage your Zerodha portfolio and place orders directly from Tele
 1. Run /login to link your Zerodha account.
 2. Once logged in, use /holdings or /positions to view your portfolio.
 3. Use /buy or /sell to place orders.
-4. Use /help to see all commands.
-
-Note: This is open source bot. You can find the source code on [GitHub](https://github.com/thisismegopi/tg-kite)`,
+4. Use /help to see all commands.`,
         { parse_mode: 'Markdown' },
     );
 };

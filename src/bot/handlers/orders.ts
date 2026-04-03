@@ -111,7 +111,12 @@ const listOrders = async (ctx: BotContext) => {
             message += `Status: *${order.status}* | Price: ${order.price || 'MKT'}\n\n`;
         });
 
-        return await ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: '📊 Positions', callback_data: 'positions' }]],
+            },
+        });
     } catch (err: any) {
         return await ctx.reply(`❌ Error fetching orders: ${err.message}`);
     }

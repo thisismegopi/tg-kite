@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import qs from 'querystring';
 import { gunzipSync } from 'zlib';
 import { config } from '../config';
-import type { HistoricalDataOptions, HistoricalDataResponse, KiteApiEnvelope, KiteApiError, KiteSessionResponse, PlaceOrderParams, QuoteMap } from '../types/kite';
+import type { HistoricalDataOptions, HistoricalDataResponse, KiteApiEnvelope, KiteApiError, KiteSessionResponse, KiteUserProfile, PlaceOrderParams, QuoteMap } from '../types/kite';
 
 class KiteClient {
     private readonly apiKey: string;
@@ -79,7 +79,7 @@ class KiteClient {
         return response.data;
     }
 
-    async getProfile() {
+    async getProfile(): Promise<KiteUserProfile> {
         return this._get('/user/profile');
     }
 

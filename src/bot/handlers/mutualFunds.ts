@@ -90,7 +90,20 @@ const mfHoldings = async (ctx: BotContext) => {
             ],
         });
 
-        return await ctx.replyWithPhoto({ source: buffer, filename: 'mf_holdings.png' }, { caption: 'Mutual fund holdings snapshot' });
+        return await ctx.replyWithPhoto(
+            { source: buffer, filename: 'mf_holdings.png' },
+            {
+                caption: 'Mutual fund holdings snapshot',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '📦 Orders', callback_data: 'mforders' },
+                            { text: '🎯 SIPs', callback_data: 'mfsips' },
+                        ],
+                    ],
+                },
+            },
+        );
     } catch (err: any) {
         return await ctx.reply(`❌ Error fetching MF holdings: ${err.message}`);
     }
@@ -129,7 +142,12 @@ const mfOrders = async (ctx: BotContext) => {
             message += `\n_Showing 5 of ${orders.length} orders_`;
         }
 
-        return await ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: '📈 MF Holdings', callback_data: 'mfholdings' }]],
+            },
+        });
     } catch (err: any) {
         return await ctx.reply(`❌ Error fetching MF orders: ${err.message}`);
     }
@@ -212,7 +230,12 @@ const mfSips = async (ctx: BotContext) => {
             message += '\n';
         });
 
-        return await ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: '📈 MF Holdings', callback_data: 'mfholdings' }]],
+            },
+        });
     } catch (err: any) {
         return await ctx.reply(`❌ Error fetching SIPs: ${err.message}`);
     }

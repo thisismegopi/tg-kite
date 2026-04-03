@@ -130,7 +130,10 @@ const handleMessage = async (ctx: BotContext, next: NextFn) => {
             db.saveUserSession(from.id, sessionData);
             ctx.kite = new KiteClient(sessionData.access_token);
 
-            await ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, { parse_mode: 'Markdown' });
+            await ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '👤Profile', callback_data: 'me' }]] },
+            });
             return;
         } catch (err: unknown) {
             console.error('Login error:', err);
@@ -153,10 +156,38 @@ const logout = async (ctx: BotContext) => {
     await ctx.reply('👋 You have been logged out.');
 };
 
+const me = async (ctx: BotContext) => {
+    try {
+        if (!ctx.kite) {
+            throw Error('Kite instance not found');
+        }
+        const profile = await ctx.kite.getProfile();
+        const message = `👤 *Profile*\n\nUser ID: ${profile.user_id}\nUser Type: ${profile.user_type}\nEmail: ${profile.email}\nUser Name: ${profile.user_name}\n\nBroker: ${profile.broker}\nExchanges: ${profile.exchanges.join(', ')}\nProducts: ${profile.products.join(', ')}\nProduct Type: ${profile.order_types.join(', ')}\nDemat Consent: ${profile.meta.demat_consent.toUpperCase()}`;
+        return await ctx.reply(message, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '📈Stocks Holdings', callback_data: 'holdings' },
+                        { text: '📈MF Holdings', callback_data: 'mfholdings' },
+                    ],
+                    [{ text: 'Portfolio Snapshot 🖼️', callback_data: 'pfsnapshot' }],
+                    [{ text: 'Fund 💰', callback_data: 'balance' }],
+                    [{ text: 'Help❔', callback_data: 'help' }],
+                    [{ text: 'Logout❗', callback_data: 'logout' }],
+                ],
+            },
+        });
+    } catch (error) {
+        return await ctx.reply(errorMessage(error));
+    }
+};
+
 export = {
     start,
     help,
     login,
     handleMessage,
     logout,
+    me,
 };

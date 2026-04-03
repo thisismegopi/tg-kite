@@ -76,7 +76,20 @@ const holdings = async (ctx: BotContext) => {
             ],
         });
 
-        return await ctx.replyWithPhoto({ source: buffer, filename: 'holdings.png' }, { caption: 'Portfolio holdings snapshot' });
+        return await ctx.replyWithPhoto(
+            { source: buffer, filename: 'holdings.png' },
+            {
+                caption: 'Portfolio holdings snapshot',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '📦 Orders', callback_data: 'orders' },
+                            { text: '📊 Positions', callback_data: 'positions' },
+                        ],
+                    ],
+                },
+            },
+        );
     } catch (err: any) {
         return await ctx.reply(`Error fetching holdings: ${err.message}`);
     }
@@ -106,7 +119,12 @@ const positions = async (ctx: BotContext) => {
             message += `P&L: ${emoji} ${formatCurrency(pnl)}\n\n`;
         });
 
-        return await ctx.reply(message, { parse_mode: 'Markdown' });
+        return await ctx.reply(message, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: '📈 Stocks Holdings', callback_data: 'holdings' }]],
+            },
+        });
     } catch (err: any) {
         return await ctx.reply(`❌ Error fetching positions: ${err.message}`);
     }

@@ -4,6 +4,9 @@ import KiteClient from '../../kite/client';
 import db from '../../storage/db';
 
 const authMiddleware = async (ctx: BotContext, next: NextFn) => {
+    if (ctx.chat?.type !== 'private') {
+        return await ctx.reply('Not a private chat!');
+    }
     if (!ctx.from) return next();
 
     const telegramUserId = ctx.from.id;

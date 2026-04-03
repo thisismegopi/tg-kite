@@ -46,9 +46,8 @@ const portfolioSnapshot = async (ctx: BotContext) => {
         const rows = db.listPortfolioSnapshotsForChart(userId);
         const { buffer, caption } = await renderPortfolioSnapshotLineChart(rows);
 
-        return await ctx.replyWithPhoto({ source: buffer }, { caption: `${captionExtra}\n${caption}` });
+        return await ctx.replyWithPhoto({ source: buffer, filename: `snapshot-${new Date().toISOString()}` }, { caption: `${captionExtra}\n${caption}` });
     } catch (err: any) {
-        console.error('portfolioSnapshot error', err);
         return await ctx.reply(`Error: ${err.message ?? err}`);
     }
 };

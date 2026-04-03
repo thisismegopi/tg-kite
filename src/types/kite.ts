@@ -44,7 +44,7 @@ export interface HistoricalDataResponse {
 }
 
 export interface KiteApiEnvelope<T> {
-    status: "success" | "error";
+    status: 'success' | 'error';
     data: T;
     message?: string;
     error_type?: string;
@@ -198,4 +198,20 @@ export interface AiAnalysisResult {
     };
     improvement_suggestions: string[];
     disclaimer: string;
+}
+
+export interface KiteUserProfile {
+    user_id: string;
+    user_type: string;
+    email: string;
+    user_name: string;
+    user_shortname: string;
+    broker: string;
+    exchanges: string[];
+    products: string[];
+    order_types: string[];
+    avatar_url: string | null;
+    meta: {
+        demat_consent: string;
+    };
 }

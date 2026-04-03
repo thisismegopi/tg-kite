@@ -21,16 +21,25 @@ bot.use(authMiddleware.authMiddleware);
 
 bot.command('start', authHandlers.start);
 bot.command('help', authHandlers.help);
+bot.action('help', authHandlers.help);
 bot.command('login', authHandlers.login);
 bot.command('logout', authHandlers.logout);
+bot.action('logout', authHandlers.logout);
 
+bot.command('me', authMiddleware.requireAuth, authHandlers.me);
+bot.action('me', authMiddleware.requireAuth, authHandlers.me);
 bot.command(['holdings', 'portfolio'], authMiddleware.requireAuth, portfolioHandlers.holdings);
+bot.action('holdings', authMiddleware.requireAuth, portfolioHandlers.holdings);
 bot.command(['pfsnapshot', 'portfoliosnapshot'], authMiddleware.requireAuth, portfolioSnapshotHandlers.portfolioSnapshot);
+bot.action('pfsnapshot', authMiddleware.requireAuth, portfolioSnapshotHandlers.portfolioSnapshot);
 bot.command('positions', authMiddleware.requireAuth, portfolioHandlers.positions);
+bot.action('positions', authMiddleware.requireAuth, portfolioHandlers.positions);
 bot.command(['balance', 'funds', 'account'], authMiddleware.requireAuth, portfolioHandlers.balance);
+bot.action('balance', authMiddleware.requireAuth, portfolioHandlers.balance);
 
 bot.command(['buy', 'sell'], authMiddleware.requireAuth, orderHandlers.placeOrder);
 bot.command('orders', authMiddleware.requireAuth, orderHandlers.listOrders);
+bot.action('orders', authMiddleware.requireAuth, orderHandlers.listOrders);
 bot.command('orderstatus', authMiddleware.requireAuth, orderHandlers.orderStatus);
 bot.command('quote', authMiddleware.requireAuth, marketQuoteHandlers.quote);
 bot.command('ohlc', authMiddleware.requireAuth, marketQuoteHandlers.ohlc);
@@ -43,9 +52,12 @@ bot.command('watchlist', authMiddleware.requireAuth, watchlistHandlers.list);
 bot.command('instruments', authMiddleware.requireAuth, watchlistHandlers.getInstrument);
 
 bot.command(['mfholdings', 'mutualfunds'], authMiddleware.requireAuth, mfHandlers.mfHoldings);
+bot.action('mfholdings', authMiddleware.requireAuth, mfHandlers.mfHoldings);
 bot.command('mforders', authMiddleware.requireAuth, mfHandlers.mfOrders);
+bot.action('mforders', authMiddleware.requireAuth, mfHandlers.mfOrders);
 bot.command('mforder', authMiddleware.requireAuth, mfHandlers.mfOrder);
 bot.command('mfsips', authMiddleware.requireAuth, mfHandlers.mfSips);
+bot.action('mfsips', authMiddleware.requireAuth, mfHandlers.mfSips);
 bot.command('mfinstruments', authMiddleware.requireAuth, mfHandlers.mfInstruments);
 
 bot.command(['analyze', 'aiportfolio'], authMiddleware.requireAuth, analyzeHandlers.analyze);

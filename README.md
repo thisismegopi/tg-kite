@@ -177,7 +177,7 @@ Notes:
 | `/mforders` | Show recent MF orders |
 | `/mforder <ORDER_ID>` | Show MF order details |
 | `/mfsips` | Show SIPs |
-| `/mfinstruments <QUERY>` | Search MF instruments |
+| `/mfinstruments` | MF instruments list as CSV file |
 
 ### AI Analysis
 

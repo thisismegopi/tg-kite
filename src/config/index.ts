@@ -35,6 +35,7 @@ if (missingVars.length > 0) {
 
 const config = {
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN as string,
+    telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || process.env.BOT_USERNAME || '',
     kiteApiKey: process.env.KITE_API_KEY as string,
     kiteApiSecret: process.env.KITE_API_SECRET as string,
     kiteRedirectUrl: process.env.KITE_REDIRECT_URL as string,

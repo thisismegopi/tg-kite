@@ -1,6 +1,4 @@
-import type { MfHoldingRecord, MfInstrumentRecord, MfOrderRecord, MfSipRecord } from '../../types/kite';
-
-import mfCache from '../../storage/mfCache';
+import type { MfHoldingRecord, MfOrderRecord, MfSipRecord } from '../../types/kite';
 import { renderTableImage, type TableRow } from '../../chart/tableImage';
 import { BotContext } from '../../types/bot';
 
@@ -28,6 +26,33 @@ const mfHoldingMetrics = (holding: MfHoldingRecord) => {
     const pnl = currentValue - investedValue;
     const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
     return { holding, investedValue, currentValue, pnl, pnlPercent };
+};
+
+const sipStatusPriority = (status?: string) => {
+    const normalized = (status || '').toUpperCase();
+    if (normalized === 'ACTIVE') return 0;
+    if (normalized === 'PAUSED') return 1;
+    if (normalized === 'CANCELLED') return 2;
+    return 3;
+};
+
+const sipStatusTone = (status?: string): 'gain' | 'flat' | 'loss' => {
+    const normalized = (status || '').toUpperCase();
+    if (normalized === 'ACTIVE') return 'gain';
+    if (normalized === 'PAUSED') return 'flat';
+    if (normalized === 'CANCELLED') return 'loss';
+    return 'loss';
+};
+
+const sipNextInstalmentTime = (dateStr?: string) => {
+    if (!dateStr) return Number.MAX_SAFE_INTEGER;
+    const timestamp = new Date(dateStr).getTime();
+    return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+};
+
+const formatFrequency = (frequency?: string) => {
+    if (!frequency) return 'N/A';
+    return `${frequency.charAt(0).toUpperCase()}${frequency.slice(1)}`;
 };
 
 const mfHoldings = async (ctx: BotContext) => {
@@ -212,30 +237,58 @@ const mfSips = async (ctx: BotContext) => {
             return await ctx.reply('📭 No active SIPs found.');
         }
 
-        let message = '🎯 *SIP Orders*\n\n';
+        const sorted = [...sips].sort((a, b) => {
+            const statusDiff = sipStatusPriority(a.status) - sipStatusPriority(b.status);
+            if (statusDiff !== 0) return statusDiff;
 
-        sips.forEach(sip => {
-            const statusEmoji = sip.status === 'ACTIVE' ? '✅' : sip.status === 'PAUSED' ? '⏸️' : 'ℹ️';
-            const fundName = sip.fund.length > 30 ? `${sip.fund.substring(0, 27)}...` : sip.fund;
+            const nextDiff = sipNextInstalmentTime(a.next_instalment) - sipNextInstalmentTime(b.next_instalment);
+            if (nextDiff !== 0) return nextDiff;
 
-            message += `${statusEmoji} *${fundName}*\n`;
-            message += `💰 Amount: ${formatCurrency(sip.instalment_amount)}\n`;
-            message += `📅 Frequency: ${sip.frequency.charAt(0).toUpperCase() + sip.frequency.slice(1)}\n`;
-            message += `📍 Next: ${formatDate(sip.next_instalment)}\n`;
-            message += `📊 Status: *${sip.status}*\n`;
-            message += `✅ Completed: ${sip.completed_instalments} instalments\n`;
-            if (sip.pending_instalments > 0 && sip.pending_instalments < 9999) {
-                message += `⏳ Pending: ${sip.pending_instalments} instalments\n`;
-            }
-            message += '\n';
+            return a.fund.localeCompare(b.fund, 'en', { sensitivity: 'base' });
         });
 
-        return await ctx.reply(message, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [[{ text: '📈 MF Holdings', callback_data: 'mfholdings' }]],
+        let activeCount = 0;
+        let pausedCount = 0;
+        const rows: TableRow[] = sorted.map(sip => {
+            if (sip.status === 'ACTIVE') activeCount += 1;
+            if (sip.status === 'PAUSED') pausedCount += 1;
+
+            return {
+                cells: [
+                    { key: 'fund', text: sip.fund || 'N/A' },
+                    { key: 'amount', text: formatCurrency(sip.instalment_amount || 0) },
+                    { key: 'frequency', text: formatFrequency(sip.frequency) },
+                    { key: 'next', text: formatDate(sip.next_instalment) },
+                    { key: 'status', text: sip.status || 'N/A', tone: sipStatusTone(sip.status) },
+                    { key: 'completed', text: sip.completed_instalments ?? 0 },
+                ],
+            };
+        });
+
+        const buffer = await renderTableImage({
+            title: `Mutual Fund SIPs - ${new Date().toDateString()}`,
+            subtitle: 'Current SIP instructions snapshot',
+            columns: [
+                { key: 'fund', label: 'Fund', offset: 28, emphasis: true },
+                { key: 'amount', label: 'Amount', offset: 865, align: 'right', emphasis: true },
+                { key: 'frequency', label: 'Frequency', offset: 1035, align: 'right', emphasis: true },
+                { key: 'next', label: 'Next', offset: 1195, align: 'right', emphasis: true },
+                { key: 'status', label: 'Status', offset: 1330, align: 'right', emphasis: true },
+                { key: 'completed', label: 'Completed', offset: 1460, align: 'right', emphasis: true },
+            ],
+            rows,
+            footerLines: [`Total SIPs: ${sips.length}`, `Active SIPs: ${activeCount}`, `Paused SIPs: ${pausedCount}`],
+        });
+
+        return await ctx.replyWithPhoto(
+            { source: buffer, filename: 'mf_sips.png' },
+            {
+                caption: 'Mutual fund SIP snapshot',
+                reply_markup: {
+                    inline_keyboard: [[{ text: '📈 MF Holdings', callback_data: 'mfholdings' }]],
+                },
             },
-        });
+        );
     } catch (err: any) {
         return await ctx.reply(`❌ Error fetching SIPs: ${err.message}`);
     }
@@ -246,52 +299,17 @@ const mfInstruments = async (ctx: BotContext) => {
         if (!ctx.kite) {
             throw Error('Kite instance not found');
         }
-        const msg = ctx.message;
-        if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
-            throw Error('Kite instance not found');
-        }
-        const parts = msg.text.split(' ');
-        const searchTerm = parts.slice(1).join(' ').trim();
-
-        if (!searchTerm) {
-            return await ctx.reply(
-                '🔍 *Search Mutual Funds*\n\n' +
-                    'Usage: /mfinstruments <search term>\n\n' +
-                    'Examples:\n' +
-                    '• /mfinstruments hdfc balanced\n' +
-                    '• /mfinstruments axis bluechip\n' +
-                    '• /mfinstruments kotak flexi\n\n' +
-                    '_This searches fund names, AMCs, and scheme codes._',
-                { parse_mode: 'Markdown' },
-            );
-        }
-
-        await ctx.reply('🔎 Searching mutual funds...');
-        const results = (await mfCache.searchInstruments(ctx.kite, searchTerm, 10)) as MfInstrumentRecord[];
-
-        if (!results || results.length === 0) {
-            return await ctx.reply(`🔍 No mutual funds found matching "${searchTerm}".`);
-        }
-
-        let message = `🔎 *MF Search Results for "${searchTerm}"*\n\n`;
-
-        results.forEach((instrument, index) => {
-            const name = instrument.name.length > 40 ? `${instrument.name.substring(0, 37)}...` : instrument.name;
-
-            message += `*${index + 1}. ${name}*\n`;
-            message += `🆔 Symbol: \`${instrument.tradingsymbol}\`\n`;
-            message += `🏢 AMC: ${instrument.amc.replace('_MF', '')}\n`;
-            message += `💰 Min Purchase: ${formatCurrency(instrument.minimum_purchase_amount)}\n`;
-            message += `📊 Last NAV: ${instrument.last_price}\n`;
-            message += `⚙️ Type: ${instrument.scheme_type} (${instrument.plan})\n\n`;
-        });
-
-        const cacheStats = mfCache.getCacheStats();
-        message += `_Showing ${results.length} of ${cacheStats.instrumentCount} cached funds_`;
-
-        return await ctx.reply(message, { parse_mode: 'Markdown' });
+        await ctx.reply('Fetching mutual fund instruments CSV from Kite (large file; may take a moment)...');
+        const csv = await ctx.kite.getMfInstruments();
+        const buf = Buffer.from(csv, 'utf-8');
+        return await ctx.replyWithDocument(
+            { source: buf, filename: 'mf_instruments.csv' },
+            {
+                caption: 'Kite mutual fund instruments master list (CSV). Dump is generated once daily; last_price is not real time.',
+            },
+        );
     } catch (err: any) {
-        return await ctx.reply(`❌ Error searching instruments: ${err.message}`);
+        return await ctx.reply(`❌ Error fetching MF instruments: ${err.message}`);
     }
 };
 

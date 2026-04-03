@@ -184,12 +184,20 @@ class KiteClient {
         return this._get('/mf/sips');
     }
 
+    /**
+     * Full mutual fund instruments dump as CSV (Kite may gzip the response; decoded here).
+     * @see https://kite.trade/docs/connect/v3/mf/#retrieving-list-of-mutual-fund-instruments
+     */
     async getMfInstruments(): Promise<string> {
-        const response = (await this.client.get('/mf/instruments', {
-            transformResponse: [data => data],
-        })) as string;
+        const data = (await this.client.get('/mf/instruments', {
+            responseType: 'arraybuffer',
+        })) as unknown as ArrayBuffer;
 
-        return response;
+        let buf = Buffer.from(data);
+        if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+            buf = gunzipSync(buf);
+        }
+        return buf.toString('utf-8');
     }
 
     private async _get<T>(endpoint: string): Promise<T> {

@@ -60,7 +60,7 @@ const help = (ctx: BotContext) => {
 /mforders - List MF Orders (7 days)
 /mforder <id> - Check MF Order Details
 /mfsips - View Active SIPs
-/mfinstruments <query> - Search MF Schemes
+/mfinstruments - MF instruments list as CSV file
 
 *✨ AI Analysis*
 /analyze - Quick AI portfolio summary

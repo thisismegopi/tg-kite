@@ -77,14 +77,18 @@ const login = async (ctx: BotContext) => {
     return await ctx.reply(
         `🔗 *Kite Login*
 
-Click the link below to login to Zerodha.
-[Login with Kite Connect](${loginUrl})
+Click the Login Button below to login to Zerodha.
 
 After logging in, you will be redirected to a URL that looks like:
 \`https://your-redirect-url/?status=success&request_token=...\`
 
 *Copy the request_token value* and send it here to complete the login.`,
-        { parse_mode: 'Markdown' },
+        {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: 'Login ➜]', url: loginUrl }]],
+            },
+        },
     );
 };
 

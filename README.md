@@ -1,13 +1,13 @@
-# Telegram Kite Trading Bot
+# Kite Trading Bot for Telegram and Discord
 
-A Node.js Telegram bot for Zerodha Kite Connect v3. It supports authentication, portfolio views, orders, mutual funds, market quotes, historical chart images, and optional AI-powered portfolio analysis.
+A Node.js bot for Zerodha Kite Connect v3 with dual-platform support for Telegram and Discord. It supports authentication, portfolio views, orders, mutual funds, market quotes, historical chart images, portfolio snapshots, and optional AI-powered portfolio analysis while retaining Telegram compatibility.
 
 ## Features
 
-- Kite login flow for Telegram users
+- Kite login flow for Telegram and Discord users
 - **Encrypted session tokens at rest** (`request_token`, `access_token`, `public_token`) using AES-256-GCM with a key from the environment
 - Portfolio holdings, positions, and funds lookup
-- **Weekly portfolio snapshots**: MF and equity invested vs current values, stored in SQLite; at most one new snapshot per user every 7 days; dashboard-style **line chart image** in chat (Telegram-safe dimensions)
+- **Weekly portfolio snapshots**: MF and equity invested vs current values, stored in SQLite; at most one new snapshot per user every 7 days; dashboard-style **line chart image** in chat
 - Order placement and order status tracking
 - Market data commands for quote, OHLC, and LTP
 - Per-user instrument watchlist stored in SQLite
@@ -20,7 +20,7 @@ A Node.js Telegram bot for Zerodha Kite Connect v3. It supports authentication, 
 
 - Node.js 24+ (see [.nvmrc](.nvmrc); run `nvm use` if you use nvm)
 - Zerodha Kite Connect app
-- Telegram bot token from `@BotFather`
+- Telegram bot token from `@BotFather` and/or a Discord bot token/application
 - Optional Gemini API key for `/analyze`
 
 ## Setup
@@ -48,6 +48,8 @@ Required variables:
 
 ```env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+DISCORD_BOT_TOKEN=your_discord_bot_token
+DISCORD_CLIENT_ID=your_discord_application_client_id
 KITE_API_KEY=your_kite_api_key
 KITE_API_SECRET=your_kite_api_secret
 KITE_REDIRECT_URL=https://youruser.github.io/tg-kite/pages/
@@ -63,7 +65,7 @@ openssl rand -base64 32
 
 Keep this key secret and backed up. If you lose it, stored tokens cannot be decrypted and users must log in again. Existing rows created before encryption may still be plaintext until the next login or session save; the app decrypts both formats.
 
-Apply database migrations after pulling updates (creates new tables such as `portfolio_snapshot`):
+Apply database migrations after pulling updates. The latest migration rewrites legacy Telegram-only rows into platform-scoped actor IDs so Telegram data continues working alongside Discord:
 
 ```bash
 npm run db:migrate
@@ -76,9 +78,9 @@ GEMINI_API_KEY=your_google_gemini_api_key
 GEMINI_MODEL=gemini-2.0-flash
 ```
 
-4. Configure the static login page in [pages/index.html](pages/index.html) with your bot username.
+4. Configure the static login page in [pages/index.html](pages/index.html) with your Telegram bot username if you want the return-to-bot link to prefill Telegram. Discord users can copy the token manually from the page.
 
-5. Start the bot.
+5. Start the bot. If both platform tokens are configured, Telegram and Discord will run together from the same process.
 
 ```bash
 npm start
@@ -86,13 +88,15 @@ npm start
 
 ## Login Flow
 
-1. Open the bot in Telegram.
+1. Open the bot in Telegram or Discord DM.
 2. Run `/login`.
 3. Complete the Zerodha login in the browser.
 4. Copy the `request_token` from the redirect page.
-5. Paste the token back into the Telegram chat.
+5. Paste the token back into the same bot chat.
 
 ## Commands
+
+Telegram keeps the existing slash-command surface. Discord exposes matching slash commands in DMs and supports buttons for the same navigation flows.
 
 ### Core
 
@@ -224,9 +228,9 @@ tg-kite/
 
 SQLite tables:
 
-- `sessions`: Kite session data per Telegram user (Kite tokens encrypted at rest with `SESSION_ENCRYPTION_KEY`)
+- `sessions`: Kite session data per platform actor (for example `telegram:<id>` or `discord:<id>`) with Kite tokens encrypted at rest
 - `ai_credits`: AI credit balance and usage tracking
-- `user_watchlist`: saved instruments per Telegram user
+- `user_watchlist`: saved instruments per platform actor
 - `portfolio_snapshot`: per-user MF/equity invested and current values over time for snapshot charts
 
 ## Notes

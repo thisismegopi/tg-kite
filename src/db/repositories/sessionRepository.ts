@@ -1,14 +1,17 @@
-import { eq } from "drizzle-orm";
-import { encryptSessionToken, decryptSessionToken } from "../../crypto/sessionTokenCrypto";
-import { config } from "../../config";
-import { getDb } from "../client";
-import { sessions } from "../schema";
-import type { SessionRecord, StoredSessionInput } from "../../types/storage";
+import { eq } from 'drizzle-orm';
+import { encryptSessionToken, decryptSessionToken } from '../../crypto/sessionTokenCrypto';
+import { config } from '../../config';
+import { getDb } from '../client';
+import { sessions } from '../schema';
+import type { BotPlatform } from '../../types/bot';
+import type { SessionRecord, StoredSessionInput } from '../../types/storage';
 
 function mapSessionRow(row: typeof sessions.$inferSelect): SessionRecord {
     const k = config.sessionEncryptionKey;
     return {
-        telegramUserId: row.telegramUserId,
+        actorId: row.actorId,
+        platform: row.platform as BotPlatform,
+        platformUserId: row.platformUserId,
         requestToken: decryptSessionToken(row.requestToken, k),
         accessToken: decryptSessionToken(row.accessToken, k),
         publicToken: decryptSessionToken(row.publicToken, k),
@@ -20,14 +23,15 @@ function mapSessionRow(row: typeof sessions.$inferSelect): SessionRecord {
     };
 }
 
-export function saveUserSession(dbFile: string, telegramUserId: string | number, sessionData: StoredSessionInput) {
+export function saveUserSession(dbFile: string, actorId: string, platform: BotPlatform, platformUserId: string, sessionData: StoredSessionInput) {
     const { db } = getDb(dbFile);
-    const id = String(telegramUserId);
     const k = config.sessionEncryptionKey;
 
     db.insert(sessions)
         .values({
-            telegramUserId: id,
+            actorId,
+            platform,
+            platformUserId,
             requestToken: encryptSessionToken(sessionData.request_token ?? null, k),
             accessToken: encryptSessionToken(sessionData.access_token ?? null, k),
             publicToken: encryptSessionToken(sessionData.public_token ?? null, k),
@@ -38,8 +42,10 @@ export function saveUserSession(dbFile: string, telegramUserId: string | number,
             expiresAt: sessionData.expires_at ?? null,
         })
         .onConflictDoUpdate({
-            target: sessions.telegramUserId,
+            target: sessions.actorId,
             set: {
+                platform,
+                platformUserId,
                 requestToken: encryptSessionToken(sessionData.request_token ?? null, k),
                 accessToken: encryptSessionToken(sessionData.access_token ?? null, k),
                 publicToken: encryptSessionToken(sessionData.public_token ?? null, k),
@@ -53,17 +59,17 @@ export function saveUserSession(dbFile: string, telegramUserId: string | number,
         .run();
 }
 
-export function getUserSession(dbFile: string, telegramUserId: string | number): SessionRecord | null {
+export function getUserSession(dbFile: string, actorId: string): SessionRecord | null {
     const { db } = getDb(dbFile);
     const row = db.select()
         .from(sessions)
-        .where(eq(sessions.telegramUserId, String(telegramUserId)))
+        .where(eq(sessions.actorId, actorId))
         .get();
 
     return row ? mapSessionRow(row) : null;
 }
 
-export function deleteUserSession(dbFile: string, telegramUserId: string | number) {
+export function deleteUserSession(dbFile: string, actorId: string) {
     const { db } = getDb(dbFile);
-    return db.delete(sessions).where(eq(sessions.telegramUserId, String(telegramUserId))).run();
+    return db.delete(sessions).where(eq(sessions.actorId, actorId)).run();
 }

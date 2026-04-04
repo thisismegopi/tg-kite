@@ -1,13 +1,16 @@
-import { eq, sql } from "drizzle-orm";
-import { getDb } from "../client";
-import { aiCredits } from "../schema";
-import type { AiCreditsRecord } from "../../types/storage";
+import { eq, sql } from 'drizzle-orm';
+import { getDb } from '../client';
+import { aiCredits } from '../schema';
+import type { BotPlatform } from '../../types/bot';
+import type { AiCreditsRecord } from '../../types/storage';
 
 export const DEFAULT_AI_CREDITS = 10;
 
 function mapCreditsRow(row: typeof aiCredits.$inferSelect): AiCreditsRecord {
     return {
-        telegramUserId: row.telegramUserId,
+        actorId: row.actorId,
+        platform: row.platform as BotPlatform,
+        platformUserId: row.platformUserId,
         credits: row.credits,
         totalUsed: row.totalUsed,
         createdAt: row.createdAt,
@@ -15,21 +18,27 @@ function mapCreditsRow(row: typeof aiCredits.$inferSelect): AiCreditsRecord {
     };
 }
 
-function ensureCreditsRow(dbFile: string, telegramUserId: string) {
+function ensureCreditsRow(dbFile: string, actorId: string, platform?: BotPlatform, platformUserId?: string) {
     const { db } = getDb(dbFile);
     const existing = db.select()
         .from(aiCredits)
-        .where(eq(aiCredits.telegramUserId, telegramUserId))
+        .where(eq(aiCredits.actorId, actorId))
         .get();
 
     if (existing) {
         return existing;
     }
 
+    if (!platform || !platformUserId) {
+        return null;
+    }
+
     const now = Date.now();
     db.insert(aiCredits)
         .values({
-            telegramUserId,
+            actorId,
+            platform,
+            platformUserId,
             credits: DEFAULT_AI_CREDITS,
             totalUsed: 0,
             createdAt: now,
@@ -39,12 +48,12 @@ function ensureCreditsRow(dbFile: string, telegramUserId: string) {
 
     return db.select()
         .from(aiCredits)
-        .where(eq(aiCredits.telegramUserId, telegramUserId))
+        .where(eq(aiCredits.actorId, actorId))
         .get();
 }
 
-export function getAiCredits(dbFile: string, telegramUserId: string | number) {
-    const row = ensureCreditsRow(dbFile, String(telegramUserId));
+export function getAiCredits(dbFile: string, actorId: string, platform?: BotPlatform, platformUserId?: string) {
+    const row = ensureCreditsRow(dbFile, actorId, platform, platformUserId);
     if (!row) {
         return { credits: DEFAULT_AI_CREDITS, totalUsed: 0 };
     }
@@ -56,9 +65,8 @@ export function getAiCredits(dbFile: string, telegramUserId: string | number) {
     };
 }
 
-export function consumeAiCredit(dbFile: string, telegramUserId: string | number) {
-    const id = String(telegramUserId);
-    const current = getAiCredits(dbFile, id);
+export function consumeAiCredit(dbFile: string, actorId: string, platform?: BotPlatform, platformUserId?: string) {
+    const current = getAiCredits(dbFile, actorId, platform, platformUserId);
     if (current.credits <= 0) {
         return false;
     }
@@ -70,15 +78,14 @@ export function consumeAiCredit(dbFile: string, telegramUserId: string | number)
             totalUsed: sql`${aiCredits.totalUsed} + 1`,
             updatedAt: Date.now(),
         })
-        .where(eq(aiCredits.telegramUserId, id))
+        .where(eq(aiCredits.actorId, actorId))
         .run();
 
     return true;
 }
 
-export function addAiCredits(dbFile: string, telegramUserId: string | number, amount: number) {
-    const id = String(telegramUserId);
-    getAiCredits(dbFile, id);
+export function addAiCredits(dbFile: string, actorId: string, amount: number, platform?: BotPlatform, platformUserId?: string) {
+    getAiCredits(dbFile, actorId, platform, platformUserId);
 
     const { db } = getDb(dbFile);
     db.update(aiCredits)
@@ -86,8 +93,8 @@ export function addAiCredits(dbFile: string, telegramUserId: string | number, am
             credits: sql`${aiCredits.credits} + ${amount}`,
             updatedAt: Date.now(),
         })
-        .where(eq(aiCredits.telegramUserId, id))
+        .where(eq(aiCredits.actorId, actorId))
         .run();
 
-    return getAiCredits(dbFile, id);
+    return getAiCredits(dbFile, actorId);
 }

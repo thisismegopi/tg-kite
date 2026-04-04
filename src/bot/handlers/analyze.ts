@@ -1,6 +1,7 @@
 import type { AiAnalysisResult, PortfolioSummary } from '../../types/kite';
 
 import { BotContext } from '../../types/bot';
+import { getActorFromContext } from '../../core/actor';
 import db from '../../storage/db';
 import geminiClient from '../../ai/geminiClient';
 import portfolioAnalyzer from '../../ai/portfolioAnalyzer';
@@ -123,14 +124,14 @@ New users receive ${db.DEFAULT_AI_CREDITS} free credits.`;
 
 const analyze = async (ctx: BotContext) => {
     try {
-        if (!ctx.kite || !ctx.from) {
+        const actor = getActorFromContext(ctx);
+        if (!ctx.kite || !actor) {
             throw Error('Kite instance not found');
         }
         const msg = ctx.message;
         if (!msg || !('text' in msg) || typeof msg.text !== 'string') {
             throw Error('Kite instance not found');
         }
-        const userId = ctx.from.id;
         const gemini = getGeminiClient();
 
         if (!gemini.isEnabled()) {
@@ -146,11 +147,11 @@ const analyze = async (ctx: BotContext) => {
         }
 
         if (argsText.toLowerCase() === 'credits') {
-            const creditInfo = db.getAiCredits(userId);
+            const creditInfo = db.getAiCredits(actor.actorId, actor.platform, actor.platformUserId);
             return await ctx.reply(formatCreditsMessage(creditInfo), { parse_mode: 'Markdown' });
         }
 
-        const creditInfo = db.getAiCredits(userId);
+        const creditInfo = db.getAiCredits(actor.actorId, actor.platform, actor.platformUserId);
         if (creditInfo.credits <= 0) {
             return await ctx.reply(`*No Credits Remaining*\n\nYou've used all your AI credits.\nTotal analyses done: ${creditInfo.totalUsed}`, { parse_mode: 'Markdown' });
         }
@@ -163,8 +164,8 @@ const analyze = async (ctx: BotContext) => {
                 return await ctx.reply('*No Holdings Found*\n\nAdd some investments first to ask questions about your portfolio.', { parse_mode: 'Markdown' });
             }
 
-            db.consumeAiCredit(userId);
-            const remaining = db.getAiCredits(userId);
+            db.consumeAiCredit(actor.actorId, actor.platform, actor.platformUserId);
+            const remaining = db.getAiCredits(actor.actorId);
 
             await ctx.reply(`Your Question: ${argsText}\n\n${result.answer}`);
             if (remaining.credits <= 3) {
@@ -180,8 +181,8 @@ const analyze = async (ctx: BotContext) => {
                 return await ctx.reply('*No Holdings Found*\n\nAdd some equity or mutual fund investments to get AI-powered analysis.', { parse_mode: 'Markdown' });
             }
 
-            db.consumeAiCredit(userId);
-            const remaining = db.getAiCredits(userId);
+            db.consumeAiCredit(actor.actorId, actor.platform, actor.platformUserId);
+            const remaining = db.getAiCredits(actor.actorId);
 
             if (isDetailed) {
                 const messages = formatDetailedAnalysis(result as { portfolioSummary: PortfolioSummary; analysis: AiAnalysisResult });

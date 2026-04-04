@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const requiredEnvVars = [
-    'TELEGRAM_BOT_TOKEN',
     'KITE_API_KEY',
     'KITE_API_SECRET',
     'KITE_REDIRECT_URL',
@@ -33,9 +32,15 @@ if (missingVars.length > 0) {
     process.exit(1);
 }
 
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || null;
+const discordBotToken = process.env.DISCORD_BOT_TOKEN || null;
+
 const config = {
-    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN as string,
+    telegramBotToken,
     telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || process.env.BOT_USERNAME || '',
+    discordBotToken,
+    discordClientId: process.env.DISCORD_CLIENT_ID || '',
+    discordGuildId: process.env.DISCORD_GUILD_ID || '',
     kiteApiKey: process.env.KITE_API_KEY as string,
     kiteApiSecret: process.env.KITE_API_SECRET as string,
     kiteRedirectUrl: process.env.KITE_REDIRECT_URL as string,
@@ -43,6 +48,7 @@ const config = {
     dbFile: process.env.DB_FILE || 'kite_bot.db',
     geminiApiKey: process.env.GEMINI_API_KEY || null,
     geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    platformMode: process.env.BOT_PLATFORM || 'all',
 };
 
 export { config };

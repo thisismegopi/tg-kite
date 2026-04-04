@@ -1,4 +1,5 @@
 import { BotContext } from '../../types/bot';
+import { getActorFromContext } from '../../core/actor';
 import db from '../../storage/db';
 import portfolioAnalyzer from '../../ai/portfolioAnalyzer';
 import { renderPortfolioSnapshotLineChart } from '../../chart/portfolioSnapshotChart';
@@ -18,7 +19,8 @@ function snapshotTotalsFromAggregated(aggregated: Awaited<ReturnType<typeof port
 
 const portfolioSnapshot = async (ctx: BotContext) => {
     try {
-        if (!ctx.kite || !ctx.from) {
+        const actor = getActorFromContext(ctx);
+        if (!ctx.kite || !actor) {
             throw Error('Kite instance not found');
         }
         await ctx.reply('Fetching portfolio and building chart…');
@@ -28,25 +30,24 @@ const portfolioSnapshot = async (ctx: BotContext) => {
             return ctx.reply('No equity or mutual fund holdings found. Nothing to snapshot.');
         }
 
-        const userId = ctx.from.id;
-        const last = db.getLastPortfolioSnapshot(userId);
+        const last = db.getLastPortfolioSnapshot(actor.actorId);
         const now = Date.now();
         const canCreate = !last || now - last.createdAt >= SEVEN_DAYS_MS;
 
         let captionExtra: string;
         if (canCreate) {
             const totals = snapshotTotalsFromAggregated(aggregated);
-            db.insertPortfolioSnapshot(userId, totals);
+            db.insertPortfolioSnapshot(actor.actorId, actor.platform, actor.platformUserId, totals);
             captionExtra = 'New snapshot saved.';
         } else {
             const nextAt = new Date(last!.createdAt + SEVEN_DAYS_MS);
             captionExtra = `Next new snapshot after ${nextAt.toLocaleString()} (one per 7 days). Showing history.`;
         }
 
-        const rows = db.listPortfolioSnapshotsForChart(userId);
+        const rows = db.listPortfolioSnapshotsForChart(actor.actorId);
         const { buffer, caption } = await renderPortfolioSnapshotLineChart(rows);
 
-        return await ctx.replyWithPhoto({ source: buffer, filename: `snapshot-${new Date().toISOString()}` }, { caption: `${captionExtra}\n${caption}` });
+        return await ctx.replyWithPhoto({ source: buffer }, { caption: `${captionExtra}\n${caption}` });
     } catch (err: any) {
         return await ctx.reply(`Error: ${err.message ?? err}`);
     }

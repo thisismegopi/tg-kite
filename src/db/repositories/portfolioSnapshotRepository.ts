@@ -1,14 +1,17 @@
-import { asc, desc, eq } from "drizzle-orm";
-import { getDb } from "../client";
-import { portfolioSnapshot } from "../schema";
-import type { PortfolioSnapshotRecord, PortfolioSnapshotInput } from "../../types/storage";
+import { asc, desc, eq } from 'drizzle-orm';
+import { getDb } from '../client';
+import { portfolioSnapshot } from '../schema';
+import type { BotPlatform } from '../../types/bot';
+import type { PortfolioSnapshotRecord, PortfolioSnapshotInput } from '../../types/storage';
 
 const MAX_CHART_POINTS = 60;
 
 function mapRow(row: typeof portfolioSnapshot.$inferSelect): PortfolioSnapshotRecord {
     return {
         id: row.id,
-        telegramUserId: row.telegramUserId,
+        actorId: row.actorId,
+        platform: row.platform as BotPlatform,
+        platformUserId: row.platformUserId,
         mfInvested: row.mfInvested,
         mfCurrent: row.mfCurrent,
         eqInvested: row.eqInvested,
@@ -17,12 +20,13 @@ function mapRow(row: typeof portfolioSnapshot.$inferSelect): PortfolioSnapshotRe
     };
 }
 
-export function insertPortfolioSnapshot(dbFile: string, telegramUserId: string | number, input: PortfolioSnapshotInput) {
+export function insertPortfolioSnapshot(dbFile: string, actorId: string, platform: BotPlatform, platformUserId: string, input: PortfolioSnapshotInput) {
     const { db } = getDb(dbFile);
-    const id = String(telegramUserId);
     db.insert(portfolioSnapshot)
         .values({
-            telegramUserId: id,
+            actorId,
+            platform,
+            platformUserId,
             mfInvested: input.mfInvested,
             mfCurrent: input.mfCurrent,
             eqInvested: input.eqInvested,
@@ -33,13 +37,13 @@ export function insertPortfolioSnapshot(dbFile: string, telegramUserId: string |
 
 export function getLastPortfolioSnapshot(
     dbFile: string,
-    telegramUserId: string | number,
+    actorId: string,
 ): PortfolioSnapshotRecord | null {
     const { db } = getDb(dbFile);
     const row = db
         .select()
         .from(portfolioSnapshot)
-        .where(eq(portfolioSnapshot.telegramUserId, String(telegramUserId)))
+        .where(eq(portfolioSnapshot.actorId, actorId))
         .orderBy(desc(portfolioSnapshot.createdAt))
         .limit(1)
         .get();
@@ -47,16 +51,15 @@ export function getLastPortfolioSnapshot(
     return row ? mapRow(row) : null;
 }
 
-/** Oldest-first, for charting; capped for readability. */
 export function listPortfolioSnapshotsForChart(
     dbFile: string,
-    telegramUserId: string | number,
+    actorId: string,
 ): PortfolioSnapshotRecord[] {
     const { db } = getDb(dbFile);
     const rows = db
         .select()
         .from(portfolioSnapshot)
-        .where(eq(portfolioSnapshot.telegramUserId, String(telegramUserId)))
+        .where(eq(portfolioSnapshot.actorId, actorId))
         .orderBy(asc(portfolioSnapshot.createdAt))
         .all();
 

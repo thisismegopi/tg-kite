@@ -1,5 +1,6 @@
 import { BotContext, NextFn } from '../../types/bot';
 
+import { getActorFromContext } from '../../core/actor';
 import KiteClient from '../../kite/client';
 import db from '../../storage/db';
 
@@ -106,8 +107,8 @@ const handleMessage = async (ctx: BotContext, next: NextFn) => {
 
     const text = msg.text.trim();
     if (text.length === 32 && !ctx.kite) {
-        const from = ctx.from;
-        if (!from) {
+        const actor = getActorFromContext(ctx);
+        if (!actor) {
             await next();
             return;
         }
@@ -125,7 +126,7 @@ const handleMessage = async (ctx: BotContext, next: NextFn) => {
                 login_time: sessionResponse.login_time,
             };
 
-            db.saveUserSession(from.id, sessionData);
+            db.saveUserSession(actor.actorId, actor.platform, actor.platformUserId, sessionData);
             ctx.kite = new KiteClient(sessionData.access_token);
 
             await ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, {
@@ -145,11 +146,12 @@ const handleMessage = async (ctx: BotContext, next: NextFn) => {
 
 const logout = async (ctx: BotContext) => {
     const from = ctx.from;
-    if (!from) {
-        await ctx.reply('Could not resolve your Telegram user. Try again from a private chat.');
+    const actor = getActorFromContext(ctx);
+    if (!from || !actor) {
+        await ctx.reply('Could not resolve your user account. Try again from a private chat.');
         return;
     }
-    db.deleteUserSession(from.id);
+    db.deleteUserSession(actor.actorId);
     ctx.kite = null;
     await ctx.reply('👋 You have been logged out.');
 };

@@ -118,12 +118,12 @@
         <div class="card" id="successCard">
             <span class="status-icon">✅</span>
             <h1>Login Successful</h1>
-            <p>Copy the token below and send it to the bot.</p>
+            <p>Copy the token below and paste it back into your Telegram or Discord bot chat.</p>
 
             <div class="token-box" id="tokenDisplay">Loading...</div>
 
             <button class="btn btn-secondary" onclick="copyToken()">📋 Copy Token</button>
-            <a href="#" id="botLink" class="btn btn-primary">🤖 Return to Bot</a>
+            <a href="#" id="botLink" class="btn btn-primary">🤖 Return to Telegram Bot</a>
         </div>
 
         <div class="card hidden" id="errorCard">
@@ -138,7 +138,7 @@
         <script>
             // --------------------------------------------------------
             // CONFIGURATION
-            // REPLACE 'your_bot_username' with your actual bot username (without @)
+            // REPLACE 'your_bot_username' with your Telegram bot username (without @)
             // Example: const BOT_USERNAME = 'MyKiteTradingBot';
             const BOT_USERNAME = 'zerodha_holding_bot';
             // --------------------------------------------------------
@@ -151,7 +151,7 @@
                     document.getElementById('botLink').onclick = e => {
                         if (document.getElementById('botLink').href.endsWith('#')) {
                             e.preventDefault();
-                            alert('Please configure the BOT_USERNAME in the HTML file (pages/index.html).');
+                            alert('Configure the Telegram BOT_USERNAME in pages/index.html, or copy the token manually into Discord.');
                         }
                     };
                 }
@@ -163,7 +163,9 @@
 
                 if (requestToken) {
                     document.getElementById('tokenDisplay').textContent = requestToken;
-                    document.getElementById('botLink').href = `https://t.me/${BOT_USERNAME}?text=${requestToken}`;
+                    if (BOT_USERNAME && BOT_USERNAME !== 'your_bot_username_here') {
+                        document.getElementById('botLink').href = `https://t.me/${BOT_USERNAME}?text=${requestToken}`;
+                    }
                 } else {
                     document.getElementById('successCard').classList.add('hidden');
                     document.getElementById('errorCard').classList.remove('hidden');

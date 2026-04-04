@@ -1,6 +1,7 @@
 import type { QuoteData, QuoteMap } from '../../types/kite';
 
 import { BotContext } from '../../types/bot';
+import { getActorFromContext } from '../../core/actor';
 import db from '../../storage/db';
 import marketQuoteHandlers from './marketQuotes';
 import { renderTableImage } from '../../chart/tableImage';
@@ -95,7 +96,8 @@ function getWatchlistUsage(commandName: string) {
 
 async function add(ctx: BotContext) {
     try {
-        if (!ctx.kite || !ctx.from) {
+        const actor = getActorFromContext(ctx);
+        if (!ctx.kite || !actor) {
             throw Error('Kite instance not found');
         }
         const msg = ctx.message;
@@ -108,7 +110,7 @@ async function add(ctx: BotContext) {
             return await ctx.reply(getWatchlistUsage('watchadd'));
         }
 
-        const added = db.addWatchlistInstruments(ctx.from.id, instruments);
+        const added = db.addWatchlistInstruments(actor.actorId, actor.platform, actor.platformUserId, instruments);
         const skipped = instruments.length - added;
 
         let message = `Saved ${added} instrument(s) to your watchlist.`;
@@ -124,7 +126,8 @@ async function add(ctx: BotContext) {
 
 async function remove(ctx: BotContext) {
     try {
-        if (!ctx.kite || !ctx.from) {
+        const actor = getActorFromContext(ctx);
+        if (!ctx.kite || !actor) {
             throw Error('Kite instance not found');
         }
         const msg = ctx.message;
@@ -136,7 +139,7 @@ async function remove(ctx: BotContext) {
         if (instruments.length === 0) {
             return await ctx.reply(getWatchlistUsage('watchremove'));
         }
-        const removed = db.removeWatchlistInstruments(ctx.from.id, instruments);
+        const removed = db.removeWatchlistInstruments(actor.actorId, instruments);
         const missing = instruments.length - removed;
 
         let message = `Removed ${removed} instrument(s) from your watchlist.`;
@@ -152,10 +155,11 @@ async function remove(ctx: BotContext) {
 
 async function list(ctx: BotContext) {
     try {
-        if (!ctx.kite || !ctx.from) {
+        const actor = getActorFromContext(ctx);
+        if (!ctx.kite || !actor) {
             throw Error('Kite instance not found');
         }
-        const entries = db.getWatchlistInstruments(ctx.from.id);
+        const entries = db.getWatchlistInstruments(actor.actorId);
 
         if (entries.length === 0) {
             return await ctx.reply('Your watchlist is empty.\n\nUse /watchadd <instrument> to save instruments for quick access.');
@@ -211,7 +215,7 @@ async function list(ctx: BotContext) {
 
 async function getInstrument(ctx: BotContext) {
     try {
-        if (!ctx.kite || !ctx.from) {
+        if (!ctx.kite || !getActorFromContext(ctx)) {
             throw Error('Kite instance not found');
         }
         const msg = ctx.message;

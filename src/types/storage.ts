@@ -1,5 +1,9 @@
+import type { BotPlatform } from './bot';
+
 export interface SessionRecord {
-    telegramUserId: string;
+    actorId: string;
+    platform: BotPlatform;
+    platformUserId: string;
     requestToken: string | null;
     accessToken: string | null;
     publicToken: string | null;
@@ -22,7 +26,9 @@ export interface StoredSessionInput {
 }
 
 export interface AiCreditsRecord {
-    telegramUserId: string;
+    actorId: string;
+    platform: BotPlatform;
+    platformUserId: string;
     credits: number;
     totalUsed: number;
     createdAt: number | null;
@@ -30,6 +36,9 @@ export interface AiCreditsRecord {
 }
 
 export interface WatchlistRecord {
+    actorId: string;
+    platform: BotPlatform;
+    platformUserId: string;
     instrument: string;
     createdAt: number;
 }
@@ -43,6 +52,8 @@ export interface PortfolioSnapshotInput {
 
 export interface PortfolioSnapshotRecord extends PortfolioSnapshotInput {
     id: number;
-    telegramUserId: string;
+    actorId: string;
+    platform: BotPlatform;
+    platformUserId: string;
     createdAt: number;
 }

@@ -1,5 +1,6 @@
 import { BotContext, NextFn } from '../../types/bot';
 
+import { getActorFromContext } from '../../core/actor';
 import KiteClient from '../../kite/client';
 import db from '../../storage/db';
 
@@ -7,10 +8,10 @@ const authMiddleware = async (ctx: BotContext, next: NextFn) => {
     if (ctx.chat?.type !== 'private') {
         return await ctx.reply('Not a private chat!');
     }
-    if (!ctx.from) return next();
+    const actor = getActorFromContext(ctx);
+    if (!actor) return next();
 
-    const telegramUserId = ctx.from.id;
-    const session = db.getUserSession(telegramUserId);
+    const session = db.getUserSession(actor.actorId);
 
     ctx.sessionData = session;
 
@@ -19,7 +20,7 @@ const authMiddleware = async (ctx: BotContext, next: NextFn) => {
         try {
             await ctx.kite.getProfile();
         } catch (error) {
-            db.deleteUserSession(ctx.from.id);
+            db.deleteUserSession(actor.actorId);
             ctx.kite = null;
         }
     } else {

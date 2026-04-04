@@ -5,8 +5,8 @@ import db from '../../storage/db';
 
 const baseClient = new KiteClient();
 
-const start = (ctx: BotContext) => {
-    ctx.reply(
+const start = async (ctx: BotContext) => {
+    return await ctx.reply(
         `✨ *Welcome to the Kite Trading Bot!*
 
 I can help you manage your Zerodha portfolio and place orders directly from Telegram.
@@ -20,8 +20,8 @@ I can help you manage your Zerodha portfolio and place orders directly from Tele
     );
 };
 
-const help = (ctx: BotContext) => {
-    ctx.reply(
+const help = async (ctx: BotContext) => {
+    return await ctx.reply(
         `✨ *Available Commands*
 
 *Account*
@@ -72,9 +72,9 @@ const help = (ctx: BotContext) => {
     );
 };
 
-const login = (ctx: BotContext) => {
+const login = async (ctx: BotContext) => {
     const loginUrl = baseClient.generateLoginUrl();
-    ctx.reply(
+    return await ctx.reply(
         `🔗 *Kite Login*
 
 Click the link below to login to Zerodha.
@@ -128,15 +128,13 @@ const handleMessage = async (ctx: BotContext, next: NextFn) => {
             db.saveUserSession(from.id, sessionData);
             ctx.kite = new KiteClient(sessionData.access_token);
 
-            await ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, {
+            return await ctx.reply(`✅ *Login Successful!*\n\nWelcome back, ${sessionResponse.user_name}.\nYou can now use /portfolio, /orders, etc.`, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: [[{ text: '👤Profile', callback_data: 'me' }]] },
             });
-            return;
         } catch (err: unknown) {
             console.error('Login error:', err);
-            await ctx.reply(`❌ *Login Failed*\n\nError: ${errorMessage(err)}\n\nThe token might be expired or invalid. Please run /login again.`, { parse_mode: 'Markdown' });
-            return;
+            return await ctx.reply(`❌ *Login Failed*\n\nError: ${errorMessage(err)}\n\nThe token might be expired or invalid. Please run /login again.`, { parse_mode: 'Markdown' });
         }
     }
 
@@ -144,14 +142,17 @@ const handleMessage = async (ctx: BotContext, next: NextFn) => {
 };
 
 const logout = async (ctx: BotContext) => {
-    const from = ctx.from;
-    if (!from) {
-        await ctx.reply('Could not resolve your Telegram user. Try again from a private chat.');
-        return;
+    try {
+        const from = ctx.from;
+        if (!from) {
+            throw Error('Kite instance not found');
+        }
+        db.deleteUserSession(from.id);
+        ctx.kite = null;
+        return await ctx.reply('👋 You have been logged out.');
+    } catch (error) {
+        return await ctx.reply(errorMessage(error));
     }
-    db.deleteUserSession(from.id);
-    ctx.kite = null;
-    await ctx.reply('👋 You have been logged out.');
 };
 
 const me = async (ctx: BotContext) => {

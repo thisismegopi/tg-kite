@@ -6,12 +6,13 @@ const TIMEFRAME_MAP = {
     '1m': { mode: 'direct', interval: 'minute', lookbackDays: 7, label: '1m' },
     '3m': { mode: 'direct', interval: '3minute', lookbackDays: 14, label: '3m' },
     '5m': { mode: 'direct', interval: '5minute', lookbackDays: 21, label: '5m' },
+    '15m': { mode: 'direct', interval: '15minute', lookbackDays: 21, label: '15m' },
     '30m': { mode: 'direct', interval: '30minute', lookbackDays: 90, label: '30m' },
     '1h': { mode: 'direct', interval: '60minute', lookbackDays: 180, label: '1h' },
     '1d': { mode: 'direct', interval: 'day', lookbackDays: 220, label: '1d' },
     '1w': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 900, bucket: 'week', label: '1w' },
-    '1M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 4200, bucket: 'month', label: '1M' },
-    '12M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 36500, bucket: 'year', label: '12M' },
+    '1M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 2000, bucket: 'month', label: '1M' },
+    '12M': { mode: 'aggregate', sourceInterval: 'day', lookbackDays: 2000, bucket: 'year', label: '12M' },
 } as const;
 
 interface Candle {
@@ -97,7 +98,7 @@ function aggregateCandles(candles: Candle[], bucket: 'week' | 'month' | 'year') 
 function getTimeframeConfig(timeframe: string) {
     const config = TIMEFRAME_MAP[timeframe as keyof typeof TIMEFRAME_MAP];
     if (!config) {
-        throw new Error('Unsupported timeframe. Use 1m, 3m, 5m, 30m, 1h, 1d, 1w, 1M, or 12M.');
+        throw new Error('Unsupported timeframe. Use 1m, 3m, 5m, 15m, 30m, 1h, 1d, 1w, 1M, or 12M.');
     }
     return config;
 }

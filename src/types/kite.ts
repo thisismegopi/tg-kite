@@ -84,6 +84,8 @@ export interface OrderRecord {
 export interface HoldingRecord {
     tradingsymbol?: string;
     quantity?: number;
+    realised_quantity?: number;
+    t1_quantity?: number;
     average_price?: number;
     last_price?: number;
     pnl?: number;

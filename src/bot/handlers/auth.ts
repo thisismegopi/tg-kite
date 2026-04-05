@@ -51,6 +51,7 @@ const help = async (ctx: BotContext) => {
 /watchadd <instrument> - Add to watchlist
 /watchremove <instrument> - Remove from watchlist
 /watchlist - View watchlist image sorted by gainers
+/top - Top 5 gainer and loosers from watchlist
 /instruments [EXCHANGE] - Kite master instruments list as CSV file (optional: NSE, BSE, NFO, …)
 
 *Mutual Funds*

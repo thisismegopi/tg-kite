@@ -11,8 +11,8 @@ const formatCurrencyNumber = (value: number) => {
 };
 
 const holdingMetrics = (holding: HoldingRecord) => {
-    const investedValue = (holding.average_price || 0) * (holding.quantity || 0);
-    const currentValue = (holding.last_price || 0) * (holding.quantity || 0);
+    const investedValue = (holding.average_price || 0) * ((holding.realised_quantity || 0) + (holding.t1_quantity || 0));
+    const currentValue = (holding.last_price || 0) * ((holding.realised_quantity || 0) + (holding.t1_quantity || 0));
     const pnl = currentValue - investedValue;
     const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
     return { holding, investedValue, currentValue, pnl, pnlPercent };
@@ -37,10 +37,11 @@ const holdings = async (ctx: BotContext) => {
         const rows: TableRow[] = sorted.map(({ holding, investedValue, currentValue, pnl, pnlPercent }) => {
             totalInvested += investedValue;
             totalCurrent += currentValue;
+            const qty = (holding.quantity || 0) + (holding.t1_quantity || 0);
             return {
                 cells: [
                     { key: 'symbol', text: holding.tradingsymbol || 'N/A' },
-                    { key: 'qty', text: holding.quantity ?? 0 },
+                    { key: 'qty', text: qty ?? 0 },
                     { key: 'invested', text: formatCurrency(investedValue) },
                     { key: 'current', text: formatCurrency(currentValue) },
                     { key: 'avg', text: formatCurrencyNumber(holding.average_price || 0) },

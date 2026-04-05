@@ -146,7 +146,7 @@ const mfOrders = async (ctx: BotContext) => {
             return await ctx.reply('📭 No mutual fund orders found in the last 7 days.');
         }
 
-        const recent = orders.slice(0, 5);
+        const recent = orders.slice(0, 10);
         let message = '📆 *Recent MF Orders (Last 7 Days)*\n\n';
 
         recent.forEach(order => {
@@ -164,7 +164,7 @@ const mfOrders = async (ctx: BotContext) => {
         });
 
         if (orders.length > 5) {
-            message += `\n_Showing 5 of ${orders.length} orders_`;
+            message += `\n_Showing 10 of ${orders.length} orders_`;
         }
 
         return await ctx.reply(message, {

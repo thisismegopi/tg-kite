@@ -209,6 +209,73 @@ async function list(ctx: BotContext) {
     }
 }
 
+async function top(ctx: BotContext) {
+    try {
+        if (!ctx.kite || !ctx.from) {
+            throw Error('Kite instance not found');
+        }
+        const entries = db.getWatchlistInstruments(ctx.from.id);
+
+        if (entries.length === 0) {
+            return await ctx.reply('Your watchlist is empty.\n\nUse /watchadd <instrument> to save instruments for quick access.');
+        }
+
+        const instruments = entries.map((entry: { instrument: string }) => entry.instrument);
+        const quoteMap = (await ctx.kite.getQuote(instruments)) as QuoteMap;
+        const sortedRows = buildWatchlistRows(instruments, quoteMap);
+        const rowsWithData = sortedRows.filter(row => row.hasData);
+
+        // top & bottom 5
+        let topButton = rowsWithData;
+        if (topButton.length <= 10) {
+            topButton = rowsWithData;
+        } else {
+            topButton = [...rowsWithData.slice(0, 5), ...rowsWithData.slice(-5)];
+        }
+
+        if (topButton.length === 0) {
+            let message = '*Your Watchlist*\n\n';
+            message += instruments.map(instrument => formatWatchlistItem(instrument, quoteMap[instrument])).join('\n\n');
+
+            return await ctx.reply(message, { parse_mode: 'Markdown' });
+        }
+
+        const buffer = await renderTableImage({
+            title: 'Top 5 Gainers & Loosers',
+            subtitle: 'Top 5 Gainers & Loosers from watchlist',
+            columns: [
+                { key: 'rank', label: '#', offset: 28 },
+                { key: 'instrument', label: 'Instrument', offset: 104, emphasis: true, trim: 28 },
+                { key: 'ltp', label: 'LTP', offset: 875, align: 'right', emphasis: true },
+                { key: 'change', label: 'Change', offset: 1145, align: 'right', emphasis: true },
+                { key: 'percent', label: 'Change %', offset: 1410, align: 'right', emphasis: true },
+            ],
+            rows: topButton.map((row, index) => ({
+                cells: [
+                    { key: 'rank', text: index + 1, tone: 'flat' },
+                    { key: 'instrument', text: row.instrument },
+                    { key: 'ltp', text: formatCurrency(row.lastPrice) },
+                    {
+                        key: 'change',
+                        text: `${row.change >= 0 ? '+' : ''}${formatCurrency(row.change)}`,
+                        tone: row.percent > 0 ? 'gain' : row.percent < 0 ? 'loss' : 'flat',
+                    },
+                    {
+                        key: 'percent',
+                        text: `${row.percent >= 0 ? '+' : ''}${formatPercent(row.percent)}`,
+                        tone: row.percent > 0 ? 'gain' : row.percent < 0 ? 'loss' : 'flat',
+                    },
+                ],
+            })),
+            footerLines: [`Total ${topButton.length} items`],
+        });
+
+        return await ctx.replyWithPhoto({ source: buffer, filename: 'watchlist.png' }, { caption: 'Top 5 Gainers & Loosers' });
+    } catch (err: any) {
+        return await ctx.reply(`Error loading watchlist: ${err.message}`);
+    }
+}
+
 async function getInstrument(ctx: BotContext) {
     try {
         if (!ctx.kite || !ctx.from) {
@@ -240,5 +307,6 @@ export = {
     add,
     remove,
     list,
+    top,
     getInstrument,
 };

@@ -74,11 +74,11 @@ function normalizeHoldings(holdings: HoldingRecord[]) {
         type: 'equity',
         symbol: holding.tradingsymbol,
         exchange: holding.exchange || 'NSE',
-        quantity: holding.quantity || 0,
+        quantity: (holding.realised_quantity || 0) + (holding.t1_quantity || 0),
         avg_price: holding.average_price || 0,
         current_price: holding.last_price || 0,
-        market_value: (holding.quantity || 0) * (holding.last_price || 0),
-        pnl: holding.pnl || (holding.quantity || 0) * ((holding.last_price || 0) - (holding.average_price || 0)),
+        market_value: ((holding.realised_quantity || 0) + (holding.t1_quantity || 0)) * (holding.last_price || 0),
+        pnl: holding.pnl || ((holding.realised_quantity || 0) + (holding.t1_quantity || 0)) * ((holding.last_price || 0) - (holding.average_price || 0)),
         sector: getSector(holding.tradingsymbol || ''),
     }));
 }

@@ -38,6 +38,7 @@ const commandHandlers: Record<string, { handler: RouteHandler; requireAuth?: boo
     watchadd: { handler: watchlistHandlers.add, requireAuth: true },
     watchremove: { handler: watchlistHandlers.remove, requireAuth: true },
     watchlist: { handler: watchlistHandlers.list, requireAuth: true },
+    top: { handler: watchlistHandlers.top, requireAuth: true },
     instruments: { handler: watchlistHandlers.getInstrument, requireAuth: true },
     mfholdings: { handler: mfHandlers.mfHoldings, requireAuth: true },
     mutualfunds: { handler: mfHandlers.mfHoldings, requireAuth: true },

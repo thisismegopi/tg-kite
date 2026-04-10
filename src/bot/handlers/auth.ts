@@ -166,9 +166,12 @@ const me = async (ctx: BotContext) => {
             throw Error('Kite instance not found');
         }
         const profile = await ctx.kite.getProfile();
-        const message = `👤 *Profile*\n\nUser ID: ${profile.user_id}\nUser Type: ${profile.user_type}\nEmail: ${profile.email}\nUser Name: ${profile.user_name}\n\nBroker: ${profile.broker}\nExchanges: ${profile.exchanges.join(', ')}\nProducts: ${profile.products.join(', ')}\nProduct Type: ${profile.order_types.join(', ')}\nDemat Consent: ${profile.meta.demat_consent.toUpperCase()}`;
+        const message =
+            `👤 *Profile*\n\nUser ID: ||${profile.user_id}||\nUser Type: ${profile.user_type.split('_').join(' ')}\nEmail: ||${profile.email}||\nUser Name: ||${profile.user_name}||\n\nBroker: ${profile.broker}\nExchanges: ${profile.exchanges.join(', ')}\nProducts: ${profile.products.join(', ')}\nProduct Type: ${profile.order_types.join(', ')}\nDemat Consent: ${profile.meta.demat_consent.toUpperCase()}`
+                .replace('.', '\\.')
+                .replace('-', '\\-');
         return await ctx.reply(message, {
-            parse_mode: 'Markdown',
+            parse_mode: 'MarkdownV2',
             reply_markup: {
                 inline_keyboard: [
                     [

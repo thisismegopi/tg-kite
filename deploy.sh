@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Non-interactive SSH (e.g. GitHub Actions) does not source ~/.bashrc, so nvm/Node may be missing from PATH.
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  # shellcheck disable=SC1090
+  . "$NVM_DIR/nvm.sh"
+  nvm use default --silent 2>/dev/null || true
+fi
+
 set -e  # Exit immediately on error
 
 # ─────────────────────────────────────────
@@ -8,6 +16,10 @@ set -e  # Exit immediately on error
 BRANCH="master"           # Change to your target branch
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PM2_APP_ID=0            # PM2 app ID or name
+
+if [ -f "$APP_DIR/.nvmrc" ] && type nvm >/dev/null 2>&1; then
+  (cd "$APP_DIR" && nvm use --silent) || true
+fi
 
 # ─────────────────────────────────────────
 # Helpers

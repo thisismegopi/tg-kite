@@ -57,7 +57,10 @@ npm install || fail "npm install failed"
 log "Building project..."
 npm run build || fail "npm run build failed"
 
-ok "Build completed successfully."
+log "Running database migrations..."
+npm run db:migrate || fail "npm run db:migrate failed"
+
+ok "Build and migrations completed successfully."
 
 # ─────────────────────────────────────────
 # Step 3 — Restart server with PM2

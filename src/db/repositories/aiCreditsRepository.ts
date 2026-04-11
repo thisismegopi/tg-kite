@@ -1,9 +1,8 @@
-import { eq, sql } from "drizzle-orm";
-import { getDb } from "../client";
-import { aiCredits } from "../schema";
-import type { AiCreditsRecord } from "../../types/storage";
-
-export const DEFAULT_AI_CREDITS = 10;
+import { eq, sql } from 'drizzle-orm';
+import { getDb } from '../client';
+import { aiCredits } from '../schema';
+import type { AiCreditsRecord } from '../../types/storage';
+import { DEFAULT_AI_CREDITS } from '../../config';
 
 function mapCreditsRow(row: typeof aiCredits.$inferSelect): AiCreditsRecord {
     return {
@@ -17,10 +16,7 @@ function mapCreditsRow(row: typeof aiCredits.$inferSelect): AiCreditsRecord {
 
 function ensureCreditsRow(dbFile: string, telegramUserId: string) {
     const { db } = getDb(dbFile);
-    const existing = db.select()
-        .from(aiCredits)
-        .where(eq(aiCredits.telegramUserId, telegramUserId))
-        .get();
+    const existing = db.select().from(aiCredits).where(eq(aiCredits.telegramUserId, telegramUserId)).get();
 
     if (existing) {
         return existing;
@@ -37,10 +33,7 @@ function ensureCreditsRow(dbFile: string, telegramUserId: string) {
         })
         .run();
 
-    return db.select()
-        .from(aiCredits)
-        .where(eq(aiCredits.telegramUserId, telegramUserId))
-        .get();
+    return db.select().from(aiCredits).where(eq(aiCredits.telegramUserId, telegramUserId)).get();
 }
 
 export function getAiCredits(dbFile: string, telegramUserId: string | number) {

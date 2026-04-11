@@ -1,14 +1,9 @@
 import { addAiCredits, consumeAiCredit, getAiCredits } from '../db/repositories/aiCreditsRepository';
 import { addWatchlistInstruments, getWatchlistInstruments, removeWatchlistInstruments } from '../db/repositories/watchlistRepository';
 import { closeDb, getDb } from '../db/client';
-import {
-    getLastPortfolioSnapshot,
-    insertPortfolioSnapshot,
-    listPortfolioSnapshotsForChart,
-} from '../db/repositories/portfolioSnapshotRepository';
+import { getLastPortfolioSnapshot, insertPortfolioSnapshot, listPortfolioSnapshotsForChart } from '../db/repositories/portfolioSnapshotRepository';
 import { deleteUserSession, getUserSession, saveUserSession } from '../db/repositories/sessionRepository';
 
-import { DEFAULT_AI_CREDITS } from '../db/migrate';
 import type { PortfolioSnapshotInput, StoredSessionInput } from '../types/storage';
 import { config } from '../config';
 
@@ -69,9 +64,7 @@ export = {
     getWatchlistInstruments: (telegramUserId: string | number) => toLegacyWatchlistShape(getWatchlistInstruments(config.dbFile, telegramUserId)),
     removeWatchlistInstruments: (telegramUserId: string | number, instruments: string[]) => removeWatchlistInstruments(config.dbFile, telegramUserId, instruments),
     getLastPortfolioSnapshot: (telegramUserId: string | number) => getLastPortfolioSnapshot(config.dbFile, telegramUserId),
-    insertPortfolioSnapshot: (telegramUserId: string | number, input: PortfolioSnapshotInput) =>
-        insertPortfolioSnapshot(config.dbFile, telegramUserId, input),
+    insertPortfolioSnapshot: (telegramUserId: string | number, input: PortfolioSnapshotInput) => insertPortfolioSnapshot(config.dbFile, telegramUserId, input),
     listPortfolioSnapshotsForChart: (telegramUserId: string | number) => listPortfolioSnapshotsForChart(config.dbFile, telegramUserId),
     close,
-    DEFAULT_AI_CREDITS,
 };

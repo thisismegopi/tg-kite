@@ -2,13 +2,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const requiredEnvVars = [
-    'TELEGRAM_BOT_TOKEN',
-    'KITE_API_KEY',
-    'KITE_API_SECRET',
-    'KITE_REDIRECT_URL',
-    'SESSION_ENCRYPTION_KEY',
-] as const;
+const requiredEnvVars = ['TELEGRAM_BOT_TOKEN', 'KITE_API_KEY', 'KITE_API_SECRET', 'KITE_REDIRECT_URL', 'SESSION_ENCRYPTION_KEY'] as const;
 
 function parseSessionEncryptionKey(value: string): Buffer {
     const trimmed = value.trim();
@@ -17,9 +11,7 @@ function parseSessionEncryptionKey(value: string): Buffer {
     }
     const key = Buffer.from(trimmed, 'base64');
     if (key.length !== 32) {
-        console.error(
-            'Error: SESSION_ENCRYPTION_KEY must be 32 bytes (64 hex chars, or base64 from openssl rand -base64 32).',
-        );
+        console.error('Error: SESSION_ENCRYPTION_KEY must be 32 bytes (64 hex chars, or base64 from openssl rand -base64 32).');
         process.exit(1);
     }
     return key;
@@ -45,4 +37,6 @@ const config = {
     geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
 };
 
-export { config };
+const DEFAULT_AI_CREDITS = 10;
+
+export { config, DEFAULT_AI_CREDITS };

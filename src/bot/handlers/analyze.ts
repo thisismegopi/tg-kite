@@ -4,6 +4,7 @@ import { BotContext } from '../../types/bot';
 import db from '../../storage/db';
 import geminiClient from '../../ai/geminiClient';
 import portfolioAnalyzer from '../../ai/portfolioAnalyzer';
+import { DEFAULT_AI_CREDITS } from '../../config';
 
 const { analyzePortfolio, askPortfolioQuestion } = portfolioAnalyzer;
 const { getGeminiClient } = geminiClient;
@@ -118,7 +119,7 @@ Available: *${creditInfo.credits}* credits
 Total Used: ${creditInfo.totalUsed} analyses
 
 Each AI query uses 1 credit.
-New users receive ${db.DEFAULT_AI_CREDITS} free credits.`;
+New users receive ${DEFAULT_AI_CREDITS} free credits.`;
 }
 
 const analyze = async (ctx: BotContext) => {

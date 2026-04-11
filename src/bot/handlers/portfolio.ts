@@ -57,7 +57,7 @@ const holdings = async (ctx: BotContext) => {
         const totalPnL = totalCurrent - totalInvested;
         const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
         const buffer = await renderTableImage({
-            title: `Portfolio Holdings - ${new Date().toDateString()}`,
+            title: `Equity Holdings - ${new Date().toDateString()}`,
             subtitle: 'Current equity holdings snapshot',
             columns: [
                 { key: 'symbol', label: 'Instrument', offset: 16, emphasis: true, trim: 24 },
@@ -80,7 +80,7 @@ const holdings = async (ctx: BotContext) => {
         return await ctx.replyWithPhoto(
             { source: buffer, filename: 'holdings.png' },
             {
-                caption: 'Portfolio holdings snapshot',
+                caption: `📊*Equity holdings*\n\n💼Total Holdings: ${response.length}\n💵Total invested: ${formatCurrency(totalInvested)}\n💸Total current: ${formatCurrency(totalCurrent)}\n${totalPnL >= 0 ? '🟢' : '🔴'}Total P&L: ${formatCurrency(totalPnL)} (${totalPnL >= 0 ? '+' : ''}${totalPnLPercent.toFixed(2)}%)`,
                 reply_markup: {
                     inline_keyboard: [
                         [
@@ -89,6 +89,7 @@ const holdings = async (ctx: BotContext) => {
                         ],
                     ],
                 },
+                parse_mode: 'Markdown',
             },
         );
     } catch (err: any) {

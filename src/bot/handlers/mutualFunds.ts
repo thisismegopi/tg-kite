@@ -118,7 +118,7 @@ const mfHoldings = async (ctx: BotContext) => {
         return await ctx.replyWithPhoto(
             { source: buffer, filename: 'mf_holdings.png' },
             {
-                caption: 'Mutual fund holdings snapshot',
+                caption: `📊*Mutual fund holdings*\n\n📦Total funds: ${holdings.length}\n💵Total invested: ${formatCurrency(totalInvested)}\n💸Total current: ${formatCurrency(totalCurrent)}\n${totalPnL >= 0 ? '🟢' : '🔴'}Total P&L: ${formatCurrency(totalPnL)} (${totalPnL >= 0 ? '+' : ''}${totalPnLPercent.toFixed(2)}%)`,
                 reply_markup: {
                     inline_keyboard: [
                         [
@@ -127,6 +127,7 @@ const mfHoldings = async (ctx: BotContext) => {
                         ],
                     ],
                 },
+                parse_mode: 'Markdown',
             },
         );
     } catch (err: any) {

@@ -6,7 +6,7 @@ set -e  # Exit immediately on error
 # Configuration
 # ─────────────────────────────────────────
 BRANCH="master"           # Change to your target branch
-APP_DIR="$(pwd)"        # Change to your project path if needed
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PM2_APP_ID=0            # PM2 app ID or name
 
 # ─────────────────────────────────────────

@@ -17,7 +17,4 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           command_timeout: 30m
-          script: |
-            set -e
-            cd /home/ubuntu/tg-kite
-            bash deploy.sh
+          script: bash /home/ubuntu/tg-kite/deploy.sh

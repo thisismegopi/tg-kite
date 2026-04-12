@@ -1,0 +1,4 @@
+.env
+kite_bot.db
+node_modules
+dist

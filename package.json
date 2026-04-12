@@ -9,7 +9,8 @@
         "start": "node dist/src/index.js",
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "db:generate": "drizzle-kit generate",
-        "db:migrate": "drizzle-kit migrate"
+        "db:migrate": "drizzle-kit migrate",
+        "deploy": "gh-pages -d pages"
     },
     "keywords": [],
     "author": "",
@@ -29,8 +30,9 @@
         "@types/better-sqlite3": "^7.6.13",
         "@types/node": "^24.6.0",
         "drizzle-kit": "^0.31.5",
+        "gh-pages": "^6.3.0",
+        "nodemon": "^3.0.1",
         "tsx": "^4.20.6",
-        "typescript": "^5.9.3",
-        "nodemon": "^3.0.1"
+        "typescript": "^5.9.3"
     }
 }

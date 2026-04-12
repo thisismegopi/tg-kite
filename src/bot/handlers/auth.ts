@@ -38,26 +38,28 @@ const help = async (ctx: BotContext) => {
 
 *Trading*
 /buy - Place Buy Order
-  _Usage: /buy SYMBOL QTY [TYPE] [PRICE]_
+  Usage: /buy \`SYMBOL\` \`QTY\` \`[TYPE]\` \`[PRICE]\`
 /sell - Place Sell Order
 /orders - List Recent Orders
-/orderstatus <id> - Check Order Status
+/orderstatus \`<orderId>\` - Check Order Status
 
 *Market Data*
-/quote <instrument> - Full market quote
-/ohlc <instrument> - OHLC + LTP
-/ltp <instrument> - Last traded price
-/chart <instrument> <timeframe> - Candlestick chart image
-/watchadd <instrument> - Add to watchlist
-/watchremove <instrument> - Remove from watchlist
+/quote \`<instrument>\` - Full market quote
+/ohlc \`<instrument>\` - OHLC + LTP
+/ltp \`<instrument>\` - Last traded price
+/chart \`<instrument>\` \`<timeframe>\` - Candlestick chart image
+  usage: /chart \`NSE:TCS\` \`1d\`
+  supported timeframes: 1m, 3m, 5m, 30m, 1h, 1d, 1w, 1M, 12M
+/watchadd \`<instrument>\` - Add to watchlist
+/watchremove \`<instrument>\` - Remove from watchlist
 /watchlist - View watchlist image sorted by gainers
 /top - Top 5 gainer and loosers from watchlist
-/instruments [EXCHANGE] - Kite master instruments list as CSV file (optional: NSE, BSE, NFO, …)
+/instruments \`[EXCHANGE]\` - Kite master instruments list as CSV file (optional: NSE, BSE, NFO, …)
 
 *Mutual Funds*
 /mfholdings - View MF Holdings
 /mforders - List MF Orders (7 days)
-/mforder <id> - Check MF Order Details
+/mforder \`<orderId>\` - Check MF Order Details
 /mfsips - View Active SIPs
 /mfinstruments - MF instruments list as CSV file
 

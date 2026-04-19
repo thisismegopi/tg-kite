@@ -1,127 +1,197 @@
-import axios, { type AxiosInstance } from 'axios';
-import crypto from 'crypto';
-import qs from 'querystring';
-import { gunzipSync } from 'zlib';
+import { KiteConnect } from 'kiteconnect';
+import type { Connect, Exchanges, HistoricalData, Instrument, MFInstrument, SessionData } from 'kiteconnect';
 import { config } from '../config';
-import type { HistoricalDataOptions, HistoricalDataResponse, KiteApiEnvelope, KiteApiError, KiteSessionResponse, KiteUserProfile, PlaceOrderParams, QuoteMap } from '../types/kite';
+import type { HistoricalDataOptions, HistoricalDataResponse, KiteSessionResponse, KiteUserProfile, PlaceOrderParams, QuoteMap } from '../types/kite';
+
+type CsvValue = string | number | boolean | Date | null | undefined;
+
+const INSTRUMENT_CSV_COLUMNS = [
+    'instrument_token',
+    'exchange_token',
+    'tradingsymbol',
+    'name',
+    'last_price',
+    'expiry',
+    'strike',
+    'tick_size',
+    'lot_size',
+    'instrument_type',
+    'segment',
+    'exchange',
+];
+
+const MF_INSTRUMENT_CSV_COLUMNS = [
+    'tradingsymbol',
+    'amc',
+    'name',
+    'purchase_allowed',
+    'redemption_allowed',
+    'minimum_purchase_amount',
+    'purchase_amount_multiplier',
+    'minimum_additional_purchase_amount',
+    'minimum_redemption_quantity',
+    'redemption_quantity_multiplier',
+    'dividend_type',
+    'scheme_type',
+    'plan',
+    'settlement_type',
+    'last_price',
+    'last_price_date',
+];
+
+function toKiteError(err: unknown): Error {
+    if (err instanceof Error) {
+        return err;
+    }
+
+    if (err && typeof err === 'object') {
+        const payload = err as { message?: string; error_type?: string; statusCode?: number };
+        const kiteError = new Error(payload.message || 'Unknown Kite API Error') as Error & { type?: string; statusCode?: number };
+        kiteError.type = payload.error_type;
+        kiteError.statusCode = payload.statusCode;
+        return kiteError;
+    }
+
+    return new Error(String(err));
+}
+
+function dateToApiDate(value: Date) {
+    return value.toISOString().slice(0, 10);
+}
+
+function formatCsvValue(value: CsvValue) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const text = value instanceof Date ? dateToApiDate(value) : String(value);
+    if (/[",\r\n]/.test(text)) {
+        return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    return text;
+}
+
+function toCsv<T extends Record<string, unknown>>(rows: T[], columns: string[]) {
+    return [
+        columns.join(','),
+        ...rows.map(row => columns.map(column => formatCsvValue(row[column] as CsvValue)).join(',')),
+    ].join('\n');
+}
+
+function toLoginTime(value: SessionData['login_time']) {
+    if (!value) {
+        return null;
+    }
+
+    const timestamp = new Date(String(value)).getTime();
+    return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function toHistoricalCandle(candle: HistoricalData): [string, number, number, number, number, number?, number?] {
+    const row: [string, number, number, number, number, number?, number?] = [
+        candle.date instanceof Date ? candle.date.toISOString() : String(candle.date),
+        candle.open,
+        candle.high,
+        candle.low,
+        candle.close,
+        candle.volume,
+    ];
+
+    if (candle.oi !== undefined) {
+        row.push(candle.oi);
+    }
+
+    return row;
+}
 
 class KiteClient {
     private readonly apiKey: string;
     private readonly apiSecret: string;
-    private accessToken: string | null;
-    private readonly baseUrl: string;
-    private readonly client: AxiosInstance;
+    private client: Connect;
 
     constructor(accessToken: string | null = null) {
         this.apiKey = config.kiteApiKey;
         this.apiSecret = config.kiteApiSecret;
-        this.accessToken = accessToken;
-        this.baseUrl = 'https://api.kite.trade';
-
-        this.client = axios.create({
-            baseURL: this.baseUrl,
-            headers: {
-                'X-Kite-Version': '3',
-            },
+        this.client = new KiteConnect({
+            api_key: this.apiKey,
+            access_token: accessToken || undefined,
         });
-
-        this.client.interceptors.request.use(requestConfig => {
-            if (this.accessToken) {
-                requestConfig.headers.Authorization = `token ${this.apiKey}:${this.accessToken}`;
-            }
-            return requestConfig;
-        });
-
-        this.client.interceptors.response.use(
-            response => response.data,
-            error => {
-                if (error.response && error.response.data) {
-                    const { message, error_type: errorType } = error.response.data as KiteApiEnvelope<never>;
-                    const err = new Error(message || 'Unknown Kite API Error') as KiteApiError;
-                    err.type = errorType;
-                    err.statusCode = error.response.status;
-                    throw err;
-                }
-
-                throw error;
-            },
-        );
     }
 
     setAccessToken(token: string | null) {
-        this.accessToken = token;
+        if (token) {
+            this.client.setAccessToken(token);
+            return;
+        }
+
+        this.client = new KiteConnect({ api_key: this.apiKey });
     }
 
     generateLoginUrl() {
-        return `https://kite.trade/connect/login?api_key=${this.apiKey}&v=3`;
+        return this.client.getLoginURL();
     }
 
     async generateSession(requestToken: string): Promise<KiteSessionResponse> {
-        const checksum = crypto
-            .createHash('sha256')
-            .update(this.apiKey + requestToken + this.apiSecret)
-            .digest('hex');
+        try {
+            const session = await this.client.generateSession(requestToken, this.apiSecret);
 
-        const payload = qs.stringify({
-            api_key: this.apiKey,
-            request_token: requestToken,
-            checksum,
-        });
-
-        const response = (await this.client.post('/session/token', payload, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        })) as KiteApiEnvelope<KiteSessionResponse>;
-
-        if (response.status !== 'success') {
-            throw new Error('Session generation failed');
+            return {
+                access_token: session.access_token,
+                public_token: session.public_token,
+                user_id: session.user_id,
+                user_name: session.user_name,
+                avatar_url: session.avatar_url || null,
+                login_time: toLoginTime(session.login_time),
+            };
+        } catch (err) {
+            throw toKiteError(err);
         }
-
-        return response.data;
     }
 
     async getProfile(): Promise<KiteUserProfile> {
-        return this._get('/user/profile');
+        return this.call(() => this.client.getProfile());
     }
 
     async getHoldings() {
-        return this._get('/portfolio/holdings');
+        return this.call(() => this.client.getHoldings());
     }
 
     async getPositions() {
-        return this._get('/portfolio/positions');
+        return this.call(() => this.client.getPositions());
     }
 
     async getMargins() {
-        return this._get('/user/margins');
+        return this.call(() => this.client.getMargins());
     }
 
     async getSegmentMargins(segment: string) {
-        return this._get(`/user/margins/${segment}`);
+        return this.call(() => this.client.getMargins(segment as 'equity' | 'commodity'));
     }
 
     async placeOrder(params: PlaceOrderParams) {
-        const payload = qs.stringify(params as unknown as Record<string, string | number | boolean | null | undefined>);
-        return this._post(`/orders/${params.variety || 'regular'}`, payload);
+        const { variety = 'regular', ...orderParams } = params;
+        return this.call(() => this.client.placeOrder(variety as Connect['VARIETY_REGULAR'], orderParams as Parameters<Connect['placeOrder']>[1]));
     }
 
     async getOrders() {
-        return this._get('/orders');
+        return this.call(() => this.client.getOrders());
     }
 
     async getOrderHistory(orderId: string) {
-        return this._get(`/orders/${orderId}`);
+        return this.call(() => this.client.getOrderHistory(orderId));
     }
 
     async getQuote(instruments: string[]): Promise<QuoteMap> {
-        return this._getQuoteData('/quote', instruments);
+        return this.call(() => this.client.getQuote(this.requireInstruments(instruments))) as Promise<QuoteMap>;
     }
 
     async getOhlc(instruments: string[]): Promise<QuoteMap> {
-        return this._getQuoteData('/quote/ohlc', instruments);
+        return this.call(() => this.client.getOHLC(this.requireInstruments(instruments))) as Promise<QuoteMap>;
     }
 
     async getLtp(instruments: string[]): Promise<QuoteMap> {
-        return this._getQuoteData('/quote/ltp', instruments);
+        return this.call(() => this.client.getLTP(this.requireInstruments(instruments))) as Promise<QuoteMap>;
     }
 
     async getHistoricalData(instrumentToken: number | string, interval: string, options: HistoricalDataOptions): Promise<HistoricalDataResponse> {
@@ -133,96 +203,56 @@ class KiteClient {
             throw new Error('interval is required.');
         }
 
-        const params = new URLSearchParams();
-        params.append('from', options.from);
-        params.append('to', options.to);
-
-        if (options.continuous !== undefined) {
-            params.append('continuous', String(options.continuous));
-        }
-
-        if (options.oi !== undefined) {
-            params.append('oi', String(options.oi));
-        }
-
-        const endpoint = `/instruments/historical/${instrumentToken}/${interval}?${params.toString()}`;
-        const response = (await this.client.get(endpoint)) as KiteApiEnvelope<HistoricalDataResponse>;
-        return response.data;
+        const candles = await this.call(() => this.client.getHistoricalData(instrumentToken, interval as Parameters<Connect['getHistoricalData']>[1], options.from, options.to, Boolean(options.continuous), Boolean(options.oi)));
+        return { candles: candles.map(toHistoricalCandle) };
     }
 
     /**
-     * Full tradable instruments dump as CSV (Kite gzips the response; decoded here).
-     * @see https://kite.trade/docs/connect/v3/market-quotes/#instruments
-     * @param exchange Optional exchange segment, e.g. NSE — maps to GET /instruments/:exchange
+     * Full tradable instruments dump, exposed as CSV to preserve the bot command contract.
      */
     async getInstruments(exchange?: string): Promise<string> {
-        const path = exchange ? `/instruments/${encodeURIComponent(exchange)}` : '/instruments';
-        const data = (await this.client.get(path, {
-            responseType: 'arraybuffer',
-        })) as unknown as ArrayBuffer;
-
-        let buf = Buffer.from(data);
-        if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
-            buf = gunzipSync(buf);
-        }
-        return buf.toString('utf-8');
+        const instruments = await this.call(() => this.client.getInstruments(exchange as Exchanges | undefined));
+        return toCsv(instruments as unknown as Instrument[], INSTRUMENT_CSV_COLUMNS);
     }
 
     async getMfHoldings() {
-        return this._get('/mf/holdings');
+        return this.call(() => this.client.getMFHoldings());
     }
 
-    async getMfOrders() {
-        return this._get('/mf/orders');
+    async getMfOrders(): Promise<unknown[]> {
+        return this.call(() => this.client.getMFOrders()) as Promise<unknown[]>;
     }
 
-    async getMfOrder(orderId: string) {
-        return this._get(`/mf/orders/${orderId}`);
+    async getMfOrder(orderId: string): Promise<unknown> {
+        return this.call(() => this.client.getMFOrders(orderId)) as Promise<unknown>;
     }
 
-    async getMfSips() {
-        return this._get('/mf/sips');
+    async getMfSips(): Promise<unknown[]> {
+        return this.call(() => this.client.getMFSIPS()) as Promise<unknown[]>;
     }
 
     /**
-     * Full mutual fund instruments dump as CSV (Kite may gzip the response; decoded here).
-     * @see https://kite.trade/docs/connect/v3/mf/#retrieving-list-of-mutual-fund-instruments
+     * Full mutual fund instruments dump, exposed as CSV to preserve the bot command contract.
      */
     async getMfInstruments(): Promise<string> {
-        const data = (await this.client.get('/mf/instruments', {
-            responseType: 'arraybuffer',
-        })) as unknown as ArrayBuffer;
-
-        let buf = Buffer.from(data);
-        if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
-            buf = gunzipSync(buf);
-        }
-        return buf.toString('utf-8');
+        const instruments = await this.call(() => this.client.getMFInstruments());
+        return toCsv(instruments as unknown as MFInstrument[], MF_INSTRUMENT_CSV_COLUMNS);
     }
 
-    private async _get<T>(endpoint: string): Promise<T> {
-        const response = (await this.client.get(endpoint)) as KiteApiEnvelope<T>;
-        return response.data;
-    }
-
-    private async _post<T>(endpoint: string, data: string): Promise<T> {
-        const response = (await this.client.post(endpoint, data, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        })) as KiteApiEnvelope<T>;
-
-        return response.data;
-    }
-
-    private async _getQuoteData(endpoint: string, instruments: string[]): Promise<QuoteMap> {
+    private requireInstruments(instruments: string[]) {
         if (!Array.isArray(instruments) || instruments.length === 0) {
             throw new Error('At least one instrument is required.');
         }
 
-        const params = new URLSearchParams();
-        instruments.forEach(instrument => params.append('i', instrument));
+        return instruments;
+    }
 
-        const response = (await this.client.get(`${endpoint}?${params.toString()}`)) as KiteApiEnvelope<QuoteMap>;
-        return response.data;
+    private async call<T>(operation: () => Promise<T>): Promise<T> {
+        try {
+            return await operation();
+        } catch (err) {
+            throw toKiteError(err);
+        }
     }
 }
 

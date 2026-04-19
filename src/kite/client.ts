@@ -5,20 +5,7 @@ import type { HistoricalDataOptions, HistoricalDataResponse, KiteSessionResponse
 
 type CsvValue = string | number | boolean | Date | null | undefined;
 
-const INSTRUMENT_CSV_COLUMNS = [
-    'instrument_token',
-    'exchange_token',
-    'tradingsymbol',
-    'name',
-    'last_price',
-    'expiry',
-    'strike',
-    'tick_size',
-    'lot_size',
-    'instrument_type',
-    'segment',
-    'exchange',
-];
+const INSTRUMENT_CSV_COLUMNS = ['instrument_token', 'exchange_token', 'tradingsymbol', 'name', 'last_price', 'expiry', 'strike', 'tick_size', 'lot_size', 'instrument_type', 'segment', 'exchange'];
 
 const MF_INSTRUMENT_CSV_COLUMNS = [
     'tradingsymbol',
@@ -73,10 +60,7 @@ function formatCsvValue(value: CsvValue) {
 }
 
 function toCsv<T extends Record<string, unknown>>(rows: T[], columns: string[]) {
-    return [
-        columns.join(','),
-        ...rows.map(row => columns.map(column => formatCsvValue(row[column] as CsvValue)).join(',')),
-    ].join('\n');
+    return [columns.join(','), ...rows.map(row => columns.map(column => formatCsvValue(row[column] as CsvValue)).join(','))].join('\n');
 }
 
 function toLoginTime(value: SessionData['login_time']) {
@@ -126,6 +110,14 @@ class KiteClient {
         }
 
         this.client = new KiteConnect({ api_key: this.apiKey });
+    }
+
+    async logout() {
+        try {
+            await this.client.invalidateAccessToken();
+        } catch (err) {
+            throw toKiteError(err);
+        }
     }
 
     generateLoginUrl() {
@@ -203,7 +195,9 @@ class KiteClient {
             throw new Error('interval is required.');
         }
 
-        const candles = await this.call(() => this.client.getHistoricalData(instrumentToken, interval as Parameters<Connect['getHistoricalData']>[1], options.from, options.to, Boolean(options.continuous), Boolean(options.oi)));
+        const candles = await this.call(() =>
+            this.client.getHistoricalData(instrumentToken, interval as Parameters<Connect['getHistoricalData']>[1], options.from, options.to, Boolean(options.continuous), Boolean(options.oi)),
+        );
         return { candles: candles.map(toHistoricalCandle) };
     }
 

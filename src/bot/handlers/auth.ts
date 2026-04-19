@@ -154,6 +154,10 @@ const logout = async (ctx: BotContext) => {
         if (!from) {
             throw Error('Kite instance not found');
         }
+        if (!ctx.kite) {
+            throw Error('You have been already logged out!');
+        }
+        await ctx.kite.logout();
         db.deleteUserSession(from.id);
         ctx.kite = null;
         return await ctx.reply('👋 You have been logged out.');
